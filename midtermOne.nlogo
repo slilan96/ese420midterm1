@@ -23,6 +23,7 @@ globals[
 
 to setup
   clear-all
+;;testing things
   ;;more functions go in here
 end
 
