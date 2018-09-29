@@ -36,7 +36,6 @@ to setup
   clear-all
   setup-turtles
   setup-patches
-  reset-ticks
 end
 
 
