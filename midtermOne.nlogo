@@ -18,7 +18,7 @@ turtles-own[
 ]
 
 globals[
-  ;;tbd
+  ;;tbd 123
 ]
 
 to setup
