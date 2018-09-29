@@ -25,6 +25,9 @@ to setup
   clear-all
 ;;testing things
   ;;more functions go in here
+  ;;jaojfioejoifjapefijpojeffiejofipjeiajpoiejfoije
+  ;;fjjeifjpaoijeopf ioewjfoiefj
+  addfjeoifjeoijfoej
 end
 
 to setup-turtles
