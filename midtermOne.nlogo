@@ -25,7 +25,7 @@ turtles-own[
 ;;
 
 globals[
-  ;;tbd
+
 ]
 
 ;;;
@@ -50,12 +50,64 @@ to setup-patches
 end
 
 to setup-turtles
-  ask turtles [
-    set money random 1000 ;;
-    set risk-tolerance random 1 ;;randomly assign risk tolerance
-  ]
+  set-default-shape turtles "person"
+  create-turtles num-people
+    [ move-to one-of patches
+      set size 1.5 ;; easier to see
+      set-initial-turtle-vars
+
+    ]
+
+
 end
 
+;; TURTLE METHODS
+to set-initial-turtle-vars
+  set money random 1000 ;;
+  set risk-tolerance random 100 ;;randomly assign risk tolerance
+  set success random 10 ;; TEMPORARY
+end
+
+;; MOVE TURTLES
+to move-turtles
+  ;; picked direction
+  ask turtles [
+    let pick-dir random 4
+    ifelse (pick-dir = 0)
+    [ set heading 0 ]
+    [ ifelse (pick-dir = 1)
+      [ set heading 90 ]
+      [ ifelse (pick-dir = 2)
+        [ set heading 180 ]
+        [ set heading 270 ]
+      ]
+    ]
+
+    ;;move
+    fd 1
+
+    ;; check neighbors within their patch
+    ;ask turtles-on patch-here
+
+    ;ask patches in-radius 1 [
+    ;  ifelse 6 > 5
+    ;    [ set pcolor red ]
+    ;    [ set pcolor blue ]
+    ;]
+
+    ;set success-patch sum[success] of patch-here
+
+    ask turtles-on patch-here [
+      ifelse sum [success] of turtles-on patch-here > 4
+        [ set color blue ]
+        [ set color black ]
+    ]
+
+
+
+  ]
+
+end
 
 ;; method to generate random draws after a specified interval(each tick maybe?)
 to generate-draws
@@ -72,6 +124,7 @@ to go
       [ set pcolor yellow + 1 ]
       [ set pcolor yellow ]
   ]
+  move-turtles
   tick
 end
 @#$#@#$#@
@@ -135,6 +188,21 @@ NIL
 NIL
 NIL
 0
+
+SLIDER
+28
+205
+200
+238
+num-people
+num-people
+0
+100
+51.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
