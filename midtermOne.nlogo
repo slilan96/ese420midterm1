@@ -7,6 +7,8 @@
 ;; randomly scatter these people in the patches, might end up with patches with no gamblers
 ;; possibly include way using interaction to choose where to start betting firm( use mouse to click on grid or randomly place one)
 
+;;Other Variables that can be used are on the DOC (Maybe first code something then implement probability)
+
 
 ;;
 ;; TURTLE VARIABLES
@@ -36,11 +38,35 @@ globals[
 
 ]
 
-;; Breeds of agents
-breed [risk-averse-agents risk-averse-agent] ;; TODO: BREEDS of AGENTS
-breed [risk-pro-agents risk-pro-agent]
-breed [risk-something-agents risk-something-agent]
-breed [risk-otherthing-agents risk-otherthing-agent]
+;; Doing research trying to figure out what to do for agents. (can be found on Google Doc)
+;; Need some categories of agents, some amount of money expenditure they have, some amount of
+;; times they bet maybe, likelihood to bet. These types of numbers.
+
+;; Problem Gamblers, Moderate-Risk Gamblers, Pathological Gamblers, and Gambler Averse
+;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4500885/ (for first two profiles)
+;; will need another source for last two (looking)
+;;;;STATS
+;; (Median Problem Gambler = 850 vs. Median Moderate-Risk Gambler = 57.5; p = 0.0003)
+;; other possible model
+breed [problem-bettors problem-one]
+breed [moderate-bettors moderate-one]
+breed [risk-averse-bettors risk-averse-one]
+breed [pathological-bettors pathological-one]
+
+;Segmenting casino gamblers by motivation: A cluster analysis of Korean gamblers
+;http://www.academia.edu/33074366/Segmenting_casino_gamblers_by_motivation_A_cluster_analysis_of_Korean_gamblers
+;; challenge/winning seekers,
+;; only winning seekers,
+;; light gambling seekers
+;; multi-purpose seekers
+
+;;A Model of Casino Gambling
+;;https://marketing.wharton.upenn.edu/wp-content/uploads/2016/10/gb15b.pdf
+;; naive: gambles as long as possible and only leaves after making some gains
+;;        average losses is twice as large as sophisticated agent on average
+;; sophisticated but unable to commit: doesn't gamble
+;; sophisticated but able to commit: gambles as long as possible when winning, but leaves after accumulating loss
+
 
 ;;;
 ;;; SETUP
