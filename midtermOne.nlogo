@@ -36,6 +36,12 @@ globals[
 
 ]
 
+;; Breeds of agents
+breed [risk-averse-agents risk-averse-agent] ;; TODO: BREEDS of AGENTS
+breed [risk-pro-agents risk-pro-agent]
+breed [risk-something-agents risk-something-agent]
+breed [risk-otherthing-agents risk-otherthing-agent]
+
 ;;;
 ;;; SETUP
 ;;;
