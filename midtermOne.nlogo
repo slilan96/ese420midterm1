@@ -25,6 +25,7 @@ turtles-own[
 
 patches-own[
   times-bet-advertised ;; the person heard of the bet, and how many times they've heard it
+  neighborhood ;; vision radius of the patch
 ]
 
 ;;
@@ -73,6 +74,11 @@ to set-initial-turtle-vars
   set risk-tolerance random 100 ;;randomly assign risk tolerance
   set success random 10 ;; TODO: change this, temporarily as such
   set times-bet-advertised 0
+  set money random 100 ;; TODO: Do we want to do this?
+  ;; We can make the model fall in a Pareto Law type distribution and work off that I guess
+  ;; Might be better to initialize the model on top of a Pareto type structure already.
+  ;; Or we just do a random distrubtion and ignore the these things. (I will do this for now)
+
 end
 
 ;; let one patch know of bet
@@ -94,12 +100,42 @@ to seed-random
 end
 
 ;;
+;; GO
+;;
+
+to go
+  ask patches [
+    ifelse pcolor = yellow ; TODO: Change these to something relevant
+      [ set pcolor yellow + 1 ] ; TODO: Change these to something relevant
+      [ set pcolor yellow ] ; TODO: Change these to something relevant
+  ]
+
+  ask turtles [
+    ;; IDEA: Can add breeds for different agents as such (from Rebellion Model):
+    ;; Use this to model the different types of agents we will have.
+    ; Rule M: Move to a random site within your vision
+    ;if (breed = agents and jail-term = 0) or breed = cops [ move ]
+    ;   Rule A: Determine if each agent should be active or quiet
+    ;if breed = agents and jail-term = 0 [ determine-behavior ]
+    ;  Rule C: Cops arrest a random active agent within their radius
+    ;if breed = cops [ enforce ]
+
+    move-turtles
+    check-neighbor-success
+
+
+
+  ]
+  tick
+end
+
+;;
 ;; PATCH METHODS
 ;;
 
 to hear-bet
   if not heard-bet? [
-    set times-bet-advertised times-bet-advertised + 1
+    set times-bet-advertised times-bet-advertised + 1 ;;TODO: Make this not deterministic. Add social probabilities.
   ]
 
 end
@@ -108,6 +144,16 @@ to-report heard-bet?
   report times-bet-advertised >= 0
 end
 
+to spread-bet
+  let neighbor nobody
+  set neighbor one-of neighbors ;;TODO: Make this not deterministic. Add social probabilities.
+  ;; spread betting info by person
+  ask neighbor [
+    hear-bet ;;TODO: Make this not deterministic. Add social probabilities.
+  ]
+end
+
+
 ;;
 ;; TURTLE METHODS
 ;;
@@ -115,29 +161,29 @@ end
 ;; MOVE TURTLES
 to move-turtles
   ;; picked direction
-  ask turtles [
-    let pick-dir random 4
-    ifelse (pick-dir = 0)
-    [ set heading 0 ]
-    [ ifelse (pick-dir = 1)
-      [ set heading 90 ]
-      [ ifelse (pick-dir = 2)
-        [ set heading 180 ]
-        [ set heading 270 ]
-      ]
+
+  let pick-dir random 4
+  ifelse (pick-dir = 0)
+  [ set heading 0 ]
+  [ ifelse (pick-dir = 1)
+    [ set heading 90 ]
+    [ ifelse (pick-dir = 2)
+      [ set heading 180 ]
+      [ set heading 270 ]
     ]
-    ;; move
-    fd 1
   ]
+  ;; move
+  fd 1
+
 end
 
 ;; CHECKING PATCH NEIGHBORS
 to check-neighbor-success
-  ask turtles [
-    ifelse sum [success] of turtles-on patch-here > 4
-    [ set color blue ] ; TODO: Change these to something relevant
-    [ set color black ] ; TODO: Change these to something relevant
-  ]
+
+  ifelse sum [success] of turtles-on patch-here > 4
+  [ set color blue ] ; TODO: Change these to something relevant
+  [ set color black ] ; TODO: Change these to something relevant
+
 
 end
 
@@ -147,20 +193,6 @@ to generate-draws
 
 end
 
-;;
-;; GO
-;;
-
-to go
-  ask patches [
-    ifelse pcolor = yellow
-      [ set pcolor yellow + 1 ]
-      [ set pcolor yellow ]
-  ]
-  move-turtles
-  check-neighbor-success
-
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
