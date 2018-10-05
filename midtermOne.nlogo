@@ -16,9 +16,9 @@
 
 turtles-own[
   money ;; money that turtle has at one point
-  success ;; how many neighbors are successful
-  risk-tolerance ;; how likely to risk
-
+  sentiment ;; TODO: use this variable, what is the agents sentiment towards betting (influenced by social factors)
+  success ;; TODO: use this variable, how successful the agent currently is in bets
+  agentcolor ;; give agents a color variable
 ]
 
 ;; Doing research trying to figure out what to do for agents. (can be found on Google Doc)
@@ -52,28 +52,31 @@ breed [pathological-bettors pathological-one]
 
 problem-bettors-own [
   likelihood
+
 ]
 
 moderate-bettors-own [
   likelihood
+
 ]
 
 risk-averse-bettors-own [
   likelihood
+
 ]
 
 pathological-bettors-own [
   likelihood
-]
 
+]
 
 ;;
 ;; PATCH VARIABLES
 ;;
 
 patches-own[
-  times-bet-advertised ;; the person heard of the bet, and how many times they've heard it
-  neighborhood ;; vision radius of the patch
+  times-bet-advertised ;; TODO: use this variable, the person heard of the bet, and how many times they've heard it
+  neighborhood ;; TODO: use this variable, vision radius of the patch
 ]
 
 ;;
@@ -96,6 +99,9 @@ to setup
   clear-all
   setup-turtles
   setup-patches
+  ifelse seed-randomly? = True
+  [ seed-one ]
+  [ seed-random ]
   reset-ticks
 end
 
@@ -104,8 +110,8 @@ to setup-patches
   ask patches [
     let rand random(2)
     ifelse rand = 1
-      [ set pcolor yellow ]
-      [ set pcolor yellow + 1]
+      [ set pcolor black ]
+      [ set pcolor black + 1]
   ]
 end
 
@@ -122,46 +128,47 @@ to setup-turtles
   set percent-risk-averse 0.38
 
   ; 2% of population is pathological bettors
-  let number-pathological floor(percent-pathological * num-people)
-
+  let number-pathological ceiling(percent-pathological * num-people) ; ceil this because want at least 1
   ; 40% of population is moderate
   let number-moderate floor(percent-moderate * num-people)
-
   ; 20% of population is problem
   let number-problem floor(percent-problem * num-people)
-
   ; rest is risk averse
   let number-risk-averse num-people - number-problem - number-moderate - number-pathological
 
   ;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
   create-problem-bettors number-problem
-  [ set likelihood 0.7 ]
-
-  create-moderate-bettors number-problem
-  [ set likelihood 0.4 ]
-
-  create-risk-averse-bettors number-problem
-  [ set likelihood 0.2 ]
-
-  create-pathological-bettors number-problem
-  [ set likelihood 0.9 ]
+  [ set likelihood 0.7
+    set color orange
+  ]
+  create-moderate-bettors number-moderate
+  [ set likelihood 0.4
+    set color yellow
+  ]
+  create-risk-averse-bettors number-risk-averse
+  [ set likelihood 0.2
+    set color green
+  ]
+  create-pathological-bettors number-pathological
+  [ set likelihood 0.9
+    set color red
+  ]
 
   ;; general turtle setup
   ask turtles
   [ move-to one-of patches
       set size 1.5 ;; easier to see
       set-initial-turtle-vars
+
   ]
 
 end
 
 
 to set-initial-turtle-vars
+  set success 0 ;; begin with a success rate of 0
+  set times-bet-advertised 0 ;; they haven't been advertised to yet
   set money random 1000 ;;
-  set risk-tolerance random 100 ;;randomly assign risk tolerance
-  set success random 10 ;; TODO: change this, temporarily as such
-  set times-bet-advertised 0
-  set money random 100 ;; TODO: Do we want to do this?
   ;; We can make the model fall in a Pareto Law type distribution and work off that I guess
   ;; Might be better to initialize the model on top of a Pareto type structure already.
   ;; Or we just do a random distrubtion and ignore the these things. (I will do this for now)
@@ -192,9 +199,9 @@ end
 
 to go
   ask patches [
-    ifelse pcolor = yellow ; TODO: Change these to something relevant
-      [ set pcolor yellow + 1 ] ; TODO: Change these to something relevant
-      [ set pcolor yellow ] ; TODO: Change these to something relevant
+   ; ifelse pcolor = black ; TODO: Change these to something relevant
+      ;[ set pcolor black + 1 ] ; TODO: Change these to something relevant
+     ; [ set pcolor black ] ; TODO: Change these to something relevant
   ]
 
   ask turtles [
@@ -210,13 +217,15 @@ to go
     move-turtles
 
     if ticks mod 5 = 0
-    [ ; see if agents bet
+    [ ; make agents bet every 5 ticks?
       bet-problem
       bet-moderate
       bet-risk-averse
       bet-pathological
     ]
 
+    ;; TODO: Do something when a turtle hears a bet. Make it check to see if patch was advertised to...
+    spread-bet ;; will spread the bet AND INFLUENCE of the person that says it to neighbors
   ]
   tick
 end
@@ -226,18 +235,11 @@ end
 ;;
 
 to hear-bet
-  if not heard-bet? [
-    set times-bet-advertised times-bet-advertised + 1 ;;TODO: Make this not deterministic. Add social probabilities.
-  ]
-
-end
-
-to-report heard-bet?
-  report times-bet-advertised >= 0
+  set times-bet-advertised times-bet-advertised + 1 ;;TODO: Make this not deterministic. Add social probabilities.
 end
 
 to spread-bet
-  let neighbor nobody
+  let neighbor nobody ; making a neighbor value equal no agent for now
   set neighbor one-of neighbors ;;TODO: Make this not deterministic. Add social probabilities.
   ;; spread betting info by person
   ask neighbor [
@@ -348,7 +350,6 @@ to-report check-neighbor-success
   [ report False ]
 end
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -420,7 +421,7 @@ num-people
 num-people
 0
 100
-10.0
+39.0
 1
 1
 NIL
@@ -440,6 +441,61 @@ init-advertisements
 1
 NIL
 HORIZONTAL
+
+MONITOR
+22
+323
+114
+368
+Pathological
+count pathological-bettors
+17
+1
+11
+
+MONITOR
+24
+376
+98
+421
+Moderate
+count moderate-bettors
+17
+1
+11
+
+MONITOR
+26
+439
+146
+484
+Problem
+count problem-bettors
+17
+1
+11
+
+MONITOR
+34
+501
+123
+546
+Risk Averse
+count risk-averse-bettors
+17
+1
+11
+
+SWITCH
+23
+35
+193
+68
+seed-randomly?
+seed-randomly?
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
