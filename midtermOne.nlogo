@@ -152,6 +152,7 @@ to setup-turtles
       set size 1.5 ;; easier to see
       set-initial-turtle-vars
   ]
+
 end
 
 
@@ -266,9 +267,11 @@ to generate-odds
   set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
 end
 
+
+
 ;; problem-bettors
 to bet-problem
-  if likelihood * 100 <  likelihood
+  if likelihood * 100 >  random(100) ;; so if likelihood * 100 gives me a number larger than the random chance in 1-100 then bet.
   [
    let money-to-bet random (100) ; TODO: (can make these agent owned too) base random amount of money to bet upon literature as well
 
@@ -281,7 +284,7 @@ end
 
 ;; moderate-bettors
 to bet-moderate
-  if likelihood * 100 <  likelihood
+  if likelihood * 100 >  random(100)
   [
    let money-to-bet random (50) ; TODO: base random amount of money to bet upon literature as well
 
@@ -294,7 +297,7 @@ end
 
 ;; risk-averse-bettors
 to bet-risk-averse
-  if likelihood * 100 <  likelihood
+  if likelihood * 100 >  random(100)
   [
    let money-to-bet random (20) ; TODO: base random amount of money to bet upon literature as well
 
@@ -307,7 +310,7 @@ end
 
 ;; pathological-bettors
 to bet-pathological
-  if likelihood * 100 <  likelihood
+  if likelihood * 100 >  random(100)
   [
    let money-to-bet random (150) ; TODO: base random amount of money to bet upon literature as well
 
