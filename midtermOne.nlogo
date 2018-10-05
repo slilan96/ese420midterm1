@@ -21,23 +21,6 @@ turtles-own[
 
 ]
 
-;;
-;; PATCH VARIABLES
-;;
-
-patches-own[
-  times-bet-advertised ;; the person heard of the bet, and how many times they've heard it
-  neighborhood ;; vision radius of the patch
-]
-
-;;
-;; GLOBAL VARIABLES
-;;
-
-globals[
-
-]
-
 ;; Doing research trying to figure out what to do for agents. (can be found on Google Doc)
 ;; Need some categories of agents, some amount of money expenditure they have, some amount of
 ;; times they bet maybe, likelihood to bet. These types of numbers.
@@ -67,6 +50,43 @@ breed [pathological-bettors pathological-one]
 ;; sophisticated but unable to commit: doesn't gamble
 ;; sophisticated but able to commit: gambles as long as possible when winning, but leaves after accumulating loss
 
+problem-bettors-own [
+  likelihood
+]
+
+moderate-bettors-own [
+  likelihood
+]
+
+risk-averse-bettors-own [
+  likelihood
+]
+
+pathological-bettors-own [
+  likelihood
+]
+
+
+;;
+;; PATCH VARIABLES
+;;
+
+patches-own[
+  times-bet-advertised ;; the person heard of the bet, and how many times they've heard it
+  neighborhood ;; vision radius of the patch
+]
+
+;;
+;; GLOBAL VARIABLES
+;;
+
+globals[
+  betting-odds ; the global betting odds offered at that tick
+  percent-pathological ; percent of pathological bettors in a population
+  percent-moderate
+  percent-problem
+  percent-risk-averse
+]
 
 ;;;
 ;;; SETUP
@@ -92,12 +112,46 @@ end
 
 to setup-turtles
   set-default-shape turtles "person"
-  create-turtles num-people
-    [ move-to one-of patches
+
+  ; TODO: update these with values from literature
+
+  ;; set the global vars for percent of population
+  set percent-pathological 0.02
+  set percent-moderate 0.40
+  set percent-problem 0.20
+  set percent-risk-averse 0.38
+
+  ; 2% of population is pathological bettors
+  let number-pathological floor(percent-pathological * num-people)
+
+  ; 40% of population is moderate
+  let number-moderate floor(percent-moderate * num-people)
+
+  ; 20% of population is problem
+  let number-problem floor(percent-problem * num-people)
+
+  ; rest is risk averse
+  let number-risk-averse num-people - number-problem - number-moderate - number-pathological
+
+  ;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
+  create-problem-bettors number-problem
+  [ set likelihood 0.7 ]
+
+  create-moderate-bettors number-problem
+  [ set likelihood 0.4 ]
+
+  create-risk-averse-bettors number-problem
+  [ set likelihood 0.2 ]
+
+  create-pathological-bettors number-problem
+  [ set likelihood 0.9 ]
+
+  ;; general turtle setup
+  ask turtles
+  [ move-to one-of patches
       set size 1.5 ;; easier to see
       set-initial-turtle-vars
-
-    ]
+  ]
 end
 
 
@@ -153,9 +207,14 @@ to go
     ;if breed = cops [ enforce ]
 
     move-turtles
-    check-neighbor-success
 
-
+    if ticks mod 5 = 0
+    [ ; see if agents bet
+      bet-problem
+      bet-moderate
+      bet-risk-averse
+      bet-pathological
+    ]
 
   ]
   tick
@@ -190,6 +249,92 @@ end
 ;; TURTLE METHODS
 ;;
 
+;; create an array the size of the odds+1, so 7:1 means 8 slots. Randomly fall on one to determine if won or loss.
+to-report seeIfWon [odds]
+  let boolArray n-values odds [True]
+  set boolArray lput False boolArray
+  report one-of boolArray
+end
+
+;; generate a betting option every tick and broadcast. Those that want to participate can.
+;; Thought about multiple options, but then you'd need to make some values that'd make agents pick one over other...
+to generate-odds
+  let max-extreme 16
+  let min-extreme 1
+
+  ;; Don't want to deal with arrays at the moment...might need to use extensions for that
+  set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
+end
+
+;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
+to-report problem-threshold
+  report random(71)
+end
+
+to-report moderate-threshold
+  report random(41)
+end
+
+to-report risk-averse-threshold
+  report random(21)
+end
+
+to-report pathological-threshold
+  report random(91)
+end
+
+;; problem-bettors
+to bet-problem
+  if likelihood * 100 <  problem-threshold
+  [
+   let money-to-bet random (100) ; TODO: (can make these agent owned too) base random amount of money to bet upon literature as well
+
+   ; see if he wins
+   ifelse seeIfWon betting-odds
+   [ set money money + betting-odds * money-to-bet ]
+   [ set money money - money-to-bet ]
+  ]
+end
+
+;; moderate-bettors
+to bet-moderate
+  if likelihood * 100 <  problem-threshold
+  [
+   let money-to-bet random (50) ; TODO: base random amount of money to bet upon literature as well
+
+   ; see if he wins
+   ifelse seeIfWon betting-odds
+   [ set money money + betting-odds * money-to-bet ]
+   [ set money money - money-to-bet ]
+  ]
+end
+
+;; risk-averse-bettors
+to bet-risk-averse
+  if likelihood * 100 <  problem-threshold
+  [
+   let money-to-bet random (20) ; TODO: base random amount of money to bet upon literature as well
+
+   ; see if he wins
+   ifelse seeIfWon betting-odds
+   [ set money money + betting-odds * money-to-bet ]
+   [ set money money - money-to-bet ]
+  ]
+end
+
+;; pathological-bettors
+to bet-pathological
+  if likelihood * 100 <  problem-threshold
+  [
+   let money-to-bet random (150) ; TODO: base random amount of money to bet upon literature as well
+
+   ; see if he wins
+   ifelse seeIfWon betting-odds
+   [ set money money + betting-odds * money-to-bet ]
+   [ set money money - money-to-bet ]
+  ]
+end
+
 ;; MOVE TURTLES
 to move-turtles
   ;; picked direction
@@ -209,21 +354,14 @@ to move-turtles
 
 end
 
-;; CHECKING PATCH NEIGHBORS
-to check-neighbor-success
-
-  ifelse sum [success] of turtles-on patch-here > 4
-  [ set color blue ] ; TODO: Change these to something relevant
-  [ set color black ] ; TODO: Change these to something relevant
-
-
+;; reporting success of neighbors, TODO: Find numbers for this and actually use the function. Currently isn't being used.
+to-report check-neighbor-success
+  ; checking influence of neighboring success
+  ifelse sum [success] of turtles-on neighbors > 4
+  [ report True ]
+  [ report False ]
 end
 
-
-;; method to generate random draws after a specified interval(each tick maybe?)
-to generate-draws
-
-end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -296,7 +434,7 @@ num-people
 num-people
 0
 100
-51.0
+10.0
 1
 1
 NIL
@@ -311,7 +449,7 @@ init-advertisements
 init-advertisements
 0
 10
-0.1
+7.0
 0.1
 1
 NIL
