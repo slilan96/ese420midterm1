@@ -266,26 +266,9 @@ to generate-odds
   set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
 end
 
-;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
-to-report problem-threshold
-  report random(71)
-end
-
-to-report moderate-threshold
-  report random(41)
-end
-
-to-report risk-averse-threshold
-  report random(21)
-end
-
-to-report pathological-threshold
-  report random(91)
-end
-
 ;; problem-bettors
 to bet-problem
-  if likelihood * 100 <  problem-threshold
+  if likelihood * 100 <  likelihood
   [
    let money-to-bet random (100) ; TODO: (can make these agent owned too) base random amount of money to bet upon literature as well
 
@@ -298,7 +281,7 @@ end
 
 ;; moderate-bettors
 to bet-moderate
-  if likelihood * 100 <  problem-threshold
+  if likelihood * 100 <  likelihood
   [
    let money-to-bet random (50) ; TODO: base random amount of money to bet upon literature as well
 
@@ -311,7 +294,7 @@ end
 
 ;; risk-averse-bettors
 to bet-risk-averse
-  if likelihood * 100 <  problem-threshold
+  if likelihood * 100 <  likelihood
   [
    let money-to-bet random (20) ; TODO: base random amount of money to bet upon literature as well
 
@@ -324,7 +307,7 @@ end
 
 ;; pathological-bettors
 to bet-pathological
-  if likelihood * 100 <  problem-threshold
+  if likelihood * 100 <  likelihood
   [
    let money-to-bet random (150) ; TODO: base random amount of money to bet upon literature as well
 
