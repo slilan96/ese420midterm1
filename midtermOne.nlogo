@@ -19,6 +19,7 @@ turtles-own[
   sentiment ;; TODO: use this variable, what is the agents sentiment towards betting (influenced by social factors)
   success ;; TODO: use this variable, how successful the agent currently is in bets
   agentcolor ;; give agents a color variable
+  heard-of-bet ;; did the agent hear that betting exists
 ]
 
 ;; Doing research trying to figure out what to do for agents. (can be found on Google Doc)
@@ -75,8 +76,9 @@ pathological-bettors-own [
 ;;
 
 patches-own[
-  times-bet-advertised ;; TODO: use this variable, the person heard of the bet, and how many times they've heard it
+  times-bet-advertised  ;; TODO: we're tracking this, but not using it atm.
   neighborhood ;; TODO: use this variable, vision radius of the patch
+  delay-ticks ;; use this variable to have the patches change color for some ticks (can add to interface...)
 ]
 
 ;;
@@ -89,6 +91,9 @@ globals[
   percent-moderate
   percent-problem
   percent-risk-averse
+
+  company-wins ;; money betting company wins
+  numberBankrupt ;; tracking bankrupt agents
 ]
 
 ;;;
@@ -97,27 +102,26 @@ globals[
 
 to setup
   clear-all
+  reset-ticks
+  setup-globals
   setup-turtles
   setup-patches
   ifelse seed-randomly? = True
-  [ seed-one ]
   [ seed-random ]
-  reset-ticks
+  [ seed-one ]
 end
 
 
 to setup-patches
-  ask patches [
+  ask patches[
     let rand random(2)
-    ifelse rand = 1
-      [ set pcolor black ]
-      [ set pcolor black + 1]
+    set pcolor black
+
   ]
 end
 
-
-to setup-turtles
-  set-default-shape turtles "person"
+to setup-globals
+  set company-wins 0
 
   ; TODO: update these with values from literature
 
@@ -126,6 +130,12 @@ to setup-turtles
   set percent-moderate 0.40
   set percent-problem 0.20
   set percent-risk-averse 0.38
+
+end
+
+
+to setup-turtles
+  set-default-shape turtles "person"
 
   ; 2% of population is pathological bettors
   let number-pathological ceiling(percent-pathological * num-people) ; ceil this because want at least 1
@@ -167,6 +177,7 @@ end
 
 to set-initial-turtle-vars
   set success 0 ;; begin with a success rate of 0
+  set sentiment 0.5 ;; neutral sentiment to start from
   set times-bet-advertised 0 ;; they haven't been advertised to yet
   set money random 1000 ;;
   ;; We can make the model fall in a Pareto Law type distribution and work off that I guess
@@ -199,9 +210,7 @@ end
 
 to go
   ask patches [
-   ; ifelse pcolor = black ; TODO: Change these to something relevant
-      ;[ set pcolor black + 1 ] ; TODO: Change these to something relevant
-     ; [ set pcolor black ] ; TODO: Change these to something relevant
+    check-patches-ticks
   ]
 
   ask turtles [
@@ -226,6 +235,18 @@ to go
 
     ;; TODO: Do something when a turtle hears a bet. Make it check to see if patch was advertised to...
     spread-bet ;; will spread the bet AND INFLUENCE of the person that says it to neighbors
+
+    stop-betting
+    show-faces-for-money
+
+
+
+  ]
+
+  if all-bankrupt?
+  [
+    user-message (word "There are " count turtles " Bankrupt People! That's all of them!")
+    stop
   ]
   tick
 end
@@ -236,27 +257,100 @@ end
 
 to hear-bet
   set times-bet-advertised times-bet-advertised + 1 ;;TODO: Make this not deterministic. Add social probabilities.
-end
 
-to spread-bet
-  let neighbor nobody ; making a neighbor value equal no agent for now
-  set neighbor one-of neighbors ;;TODO: Make this not deterministic. Add social probabilities.
-  ;; spread betting info by person
-  ask neighbor [
-    hear-bet ;;TODO: Make this not deterministic. Add social probabilities.
+  ;; want to implement some sort of ui that shows that a bet was advertised
+  if (pcolor != blue) and (pcolor != pink)
+  [ set delay-ticks ticks
+    set pcolor blue
+  ]
+
+  ask turtles-here
+  [
+    ifelse heard-of-bet = False
+    [ set heard-of-bet True] ; now the agent knows betting exists
+    [
+      set sentiment sentiment + 0.1 ; advertising only minorly increases sentiment if already knew it existed
+    ]
   ]
 end
 
+;; check the delay-tick variable for each patch, and if >=2 ticks have passed since being
+;; set up then, revert the color back to original black
+to check-patches-ticks
+  if ticks - delay-ticks >= 2
+  [ set pcolor black ]
+end
 
 ;;
 ;; TURTLE METHODS
 ;;
 
+;; stop betting if money is too negative
+to stop-betting
+  if money < -1000
+  [ set likelihood 0 ]
+end
+
+;; if winning of individual is high show UI
+to show-faces-for-money
+  ifelse money > 1500
+  [ set shape "face happy"]
+  [
+    ifelse (money < -500) and (money > -1000)
+    [ set shape "face sad"]
+    [
+      ifelse (money < -1000)
+      [ set shape "x"
+        ; set color red (leave color according to groups for now. Can change to make more obvious)
+      ]
+      [
+        set shape "person"
+
+      ]
+    ]
+  ]
+
+end
+
+to spread-bet
+  let neighbor nobody ; making a neighbor value equal no agent for now
+  set neighbor one-of turtles-on neighbors ;;TODO: is it right to just randomly pick one neighbor?
+  ;; spread betting info by person
+
+  ;; how likely to spread TODO: make this based on literature
+  if random(100) < 20
+  [
+    ;; want to implement some sort of ui that shows that a bet was advertised
+    ask patch-here
+    [
+      if (pcolor != blue) and (pcolor != pink)
+      [ set delay-ticks ticks
+        set pcolor pink
+      ]
+    ]
+
+    if neighbor != nobody
+    [
+      ask neighbor [
+        ;;TODO: Make this not deterministic. Add social probabilities.
+        ;; want to implement some sort of ui that shows that a bet was advertised
+        set heard-of-bet True ; now the agent knows betting exists
+        set sentiment sentiment + success * 0.1; the success of the one who advertises affect sentiment
+      ]
+    ]
+
+  ]
+
+end
+
 ;; create an array the size of the odds+1, so 7:1 means 8 slots. Randomly fall on one to determine if won or loss.
 to-report seeIfWon [odds]
-  let boolArray n-values odds [True]
-  set boolArray lput False boolArray
-  report one-of boolArray
+  let winArray n-values odds [0]
+  set winArray lput 1 winArray
+  let randompick one-of winArray
+  ifelse randompick = 1
+  [ report True ]
+  [ report False]
 end
 
 ;; generate a betting option every tick and broadcast. Those that want to participate can.
@@ -278,9 +372,15 @@ to bet-problem
    let money-to-bet random (100) ; TODO: (can make these agent owned too) base random amount of money to bet upon literature as well
 
    ; see if he wins
-   ifelse seeIfWon betting-odds
-   [ set money money + betting-odds * money-to-bet ]
-   [ set money money - money-to-bet ]
+    ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * money-to-bet
+     set success success + 1
+   ]
+   [ set money money - money-to-bet
+     set company-wins company-wins + money-to-bet
+     set success success - 1
+   ]
+
   ]
 end
 
@@ -291,9 +391,14 @@ to bet-moderate
    let money-to-bet random (50) ; TODO: base random amount of money to bet upon literature as well
 
    ; see if he wins
-   ifelse seeIfWon betting-odds
-   [ set money money + betting-odds * money-to-bet ]
-   [ set money money - money-to-bet ]
+   ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * money-to-bet
+     set success success + 1
+   ]
+   [ set money money - money-to-bet
+     set company-wins company-wins + money-to-bet
+     set success success - 1
+   ]
   ]
 end
 
@@ -304,9 +409,14 @@ to bet-risk-averse
    let money-to-bet random (20) ; TODO: base random amount of money to bet upon literature as well
 
    ; see if he wins
-   ifelse seeIfWon betting-odds
-   [ set money money + betting-odds * money-to-bet ]
-   [ set money money - money-to-bet ]
+   ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * money-to-bet
+     set success success + 1
+   ]
+   [ set money money - money-to-bet
+     set company-wins company-wins + money-to-bet
+     set success success - 1
+   ]
   ]
 end
 
@@ -317,9 +427,14 @@ to bet-pathological
    let money-to-bet random (150) ; TODO: base random amount of money to bet upon literature as well
 
    ; see if he wins
-   ifelse seeIfWon betting-odds
-   [ set money money + betting-odds * money-to-bet ]
-   [ set money money - money-to-bet ]
+   ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * money-to-bet
+     set success success + 1
+   ]
+   [ set money money - money-to-bet
+     set company-wins company-wins + money-to-bet
+     set success success - 1
+   ]
   ]
 end
 
@@ -348,6 +463,22 @@ to-report check-neighbor-success
   ifelse sum [success] of turtles-on neighbors > 4
   [ report True ]
   [ report False ]
+end
+
+;; checking to see if everyone is bankrupt and can't bet anymore so I stop model
+to-report all-bankrupt?
+  let reportValue False
+  ask turtles
+  [
+    set numberBankrupt count turtles with [likelihood = 0]
+    if numberBankrupt = num-people
+    [ set reportValue True ]
+  ]
+
+  ifelse reportValue
+  [ report True]
+  [ report False]
+
 end
 
 @#$#@#$#@
@@ -379,10 +510,10 @@ ticks
 30.0
 
 BUTTON
-11
-74
-84
-107
+92
+142
+165
+175
 setup
 setup
 NIL
@@ -428,25 +559,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-10
-269
-210
-302
+9
+79
+209
+112
 init-advertisements
 init-advertisements
 0
 10
-7.0
+4.5
 0.1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-22
-323
-114
+24
 368
+116
+413
 Pathological
 count pathological-bettors
 17
@@ -455,9 +586,9 @@ count pathological-bettors
 
 MONITOR
 24
-376
+419
 98
-421
+464
 Moderate
 count moderate-bettors
 17
@@ -465,10 +596,10 @@ count moderate-bettors
 11
 
 MONITOR
-26
-439
-146
-484
+23
+470
+143
+515
 Problem
 count problem-bettors
 17
@@ -476,10 +607,10 @@ count problem-bettors
 11
 
 MONITOR
-34
-501
-123
-546
+24
+523
+113
+568
 Risk Averse
 count risk-averse-bettors
 17
@@ -493,9 +624,63 @@ SWITCH
 68
 seed-randomly?
 seed-randomly?
-0
+1
 1
 -1000
+
+PLOT
+168
+466
+773
+734
+Money of Bettors on Average
+time
+money
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"pathological" 1.0 0 -8053223 true "" "plot mean [money] of pathological-bettors"
+"moderate" 1.0 0 -1184463 true "" "plot mean [money] of moderate-bettors"
+"problem" 1.0 0 -817084 true "" "plot mean [money] of problem-bettors"
+"risk-averse" 1.0 0 -13840069 true "" "plot mean [money] of risk-averse-bettors"
+
+MONITOR
+12
+602
+148
+647
+Company Winnings
+company-wins
+17
+1
+11
+
+MONITOR
+11
+256
+142
+301
+Number of People
+num-people
+17
+1
+11
+
+MONITOR
+15
+311
+161
+356
+Number of Bankrupt
+numberBankrupt
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
