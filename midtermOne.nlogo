@@ -22,34 +22,23 @@ turtles-own[
   heard-of-bet ;; did the agent hear that betting exists
 ]
 
-;; Doing research trying to figure out what to do for agents. (can be found on Google Doc)
-;; Need some categories of agents, some amount of money expenditure they have, some amount of
-;; times they bet maybe, likelihood to bet. These types of numbers.
-
 ;; Problem Gamblers, Moderate-Risk Gamblers, Pathological Gamblers, and Gambler Averse
-;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4500885/ (for first two profiles)
-;; will need another source for last two (looking)
-;;;;STATS
-;; (Median Problem Gambler = 850 vs. Median Moderate-Risk Gambler = 57.5; p = 0.0003)
-;; other possible model
+;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4500885/
+;;1) non-problem gamblers (score of 0);
+;;2) risk-averse gamblers
+;;3) moderate-risk gamblers
+;;4) problem gamblers
+;;5) pathological
+
+breed [non-bettors non-bettor-one]
 breed [problem-bettors problem-one]
 breed [moderate-bettors moderate-one]
 breed [risk-averse-bettors risk-averse-one]
 breed [pathological-bettors pathological-one]
 
-;Segmenting casino gamblers by motivation: A cluster analysis of Korean gamblers
-;http://www.academia.edu/33074366/Segmenting_casino_gamblers_by_motivation_A_cluster_analysis_of_Korean_gamblers
-;; challenge/winning seekers,
-;; only winning seekers,
-;; light gambling seekers
-;; multi-purpose seekers
-
-;;A Model of Casino Gambling
-;;https://marketing.wharton.upenn.edu/wp-content/uploads/2016/10/gb15b.pdf
-;; naive: gambles as long as possible and only leaves after making some gains
-;;        average losses is twice as large as sophisticated agent on average
-;; sophisticated but unable to commit: doesn't gamble
-;; sophisticated but able to commit: gambles as long as possible when winning, but leaves after accumulating loss
+non-bettors-own [
+  likelihood
+]
 
 problem-bettors-own [
   likelihood
@@ -94,6 +83,10 @@ globals[
 
   company-wins ;; money betting company wins
   numberBankrupt ;; tracking bankrupt agents
+  num-bettors
+  number-of-bets-made
+
+
 ]
 
 ;;;
@@ -122,45 +115,59 @@ end
 
 to setup-globals
   set company-wins 0
-
-  ; TODO: update these with values from literature
+  set number-of-bets-made 0
 
   ;; set the global vars for percent of population
-  set percent-pathological 0.02
+  ;; from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4500885/
+  set percent-pathological random-float (0.013) + 0.005 ;; 1.3-1.8%
   set percent-moderate 0.40
   set percent-problem 0.20
   set percent-risk-averse 0.38
-
 end
 
 
 to setup-turtles
   set-default-shape turtles "person"
+  set num-bettors round(num-people * (gamblers-perc * 0.01))
+  let new-tax-deterrent-perc tax-deterrent-perc * 0.01 ;; setting tax-deterrent-perc changes ui
 
+  ; number of people that don't bet is number of gamblers minus number of people that bet
+  let number-non-bet num-people - num-bettors
   ; 2% of population is pathological bettors
-  let number-pathological ceiling(percent-pathological * num-people) ; ceil this because want at least 1
+  let number-pathological ceiling(percent-pathological * num-bettors) ; ceil this because want at least 1
   ; 40% of population is moderate
-  let number-moderate floor(percent-moderate * num-people)
+  let number-moderate floor(percent-moderate * num-bettors)
   ; 20% of population is problem
-  let number-problem floor(percent-problem * num-people)
+  let number-problem floor(percent-problem * num-bettors)
   ; rest is risk averse
-  let number-risk-averse num-people - number-problem - number-moderate - number-pathological
+  let number-risk-averse num-bettors - number-problem - number-moderate - number-pathological
 
   ;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
+  create-non-bettors number-non-bet
+  [ set likelihood 0
+    set color magenta
+    set shape "turtle" ;; indestructible turtle?
+  ]
+
   create-problem-bettors number-problem
   [ set likelihood 0.7
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
     set color orange
   ]
   create-moderate-bettors number-moderate
   [ set likelihood 0.4
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
     set color yellow
   ]
   create-risk-averse-bettors number-risk-averse
   [ set likelihood 0.2
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
+
     set color green
   ]
   create-pathological-bettors number-pathological
   [ set likelihood 0.9
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
     set color red
   ]
 
@@ -179,10 +186,8 @@ to set-initial-turtle-vars
   set success 0 ;; begin with a success rate of 0
   set sentiment 0.5 ;; neutral sentiment to start from
   set times-bet-advertised 0 ;; they haven't been advertised to yet
-  set money random 1000 ;;
-  ;; We can make the model fall in a Pareto Law type distribution and work off that I guess
-  ;; Might be better to initialize the model on top of a Pareto type structure already.
-  ;; Or we just do a random distrubtion and ignore the these things. (I will do this for now)
+  set money random (average-salary) + 10000 ;;number based on average salary in kenya. Taking a range [10k, avg + 10k]
+  set heard-of-bet False
 
 end
 
@@ -211,6 +216,7 @@ end
 to go
   ask patches [
     check-patches-ticks
+    hear-bet
   ]
 
   ask turtles [
@@ -224,20 +230,20 @@ to go
     ;if breed = cops [ enforce ]
 
     move-turtles
+    ;; TODO: Do something when a turtle hears a bet. Make it check to see if patch was advertised to...
+    spread-bet ;; will spread the bet AND INFLUENCE of the person that says it to neighbors
 
-    if ticks mod 5 = 0
-    [ ; make agents bet every 5 ticks?
+    show-faces-for-money
+
+    if ticks mod 4 = 0 ;; every bet should represent a month so 4 ticks for a month?
+    [
       bet-problem
       bet-moderate
       bet-risk-averse
       bet-pathological
     ]
 
-    ;; TODO: Do something when a turtle hears a bet. Make it check to see if patch was advertised to...
-    spread-bet ;; will spread the bet AND INFLUENCE of the person that says it to neighbors
 
-    stop-betting
-    show-faces-for-money
 
 
 
@@ -245,7 +251,7 @@ to go
 
   if all-bankrupt?
   [
-    user-message (word "There are " count turtles " Bankrupt People! That's all of them!")
+    user-message (word "There are " numberBankrupt " Bankrupt People! That's all of the bettors!")
     stop
   ]
   tick
@@ -256,20 +262,26 @@ end
 ;;
 
 to hear-bet
-  set times-bet-advertised times-bet-advertised + 1 ;;TODO: Make this not deterministic. Add social probabilities.
 
-  ;; want to implement some sort of ui that shows that a bet was advertised
-  if (pcolor != blue) and (pcolor != pink)
-  [ set delay-ticks ticks
-    set pcolor blue
-  ]
-
-  ask turtles-here
+  ;; randomly advertise to advertisement-perc of patches
+  if random(100) < advertisement-perc * 0.01
   [
-    ifelse heard-of-bet = False
-    [ set heard-of-bet True] ; now the agent knows betting exists
+    set times-bet-advertised times-bet-advertised + 1 ;; TODO: not using this atm
+
+    ;; want to implement some sort of ui that shows that a bet was advertised
+    if (pcolor != blue) and (pcolor != pink)
+    [ set delay-ticks ticks
+      set pcolor blue
+    ]
+
+    ask turtles-here
     [
-      set sentiment sentiment + 0.1 ; advertising only minorly increases sentiment if already knew it existed
+      ifelse heard-of-bet = False
+      [ set heard-of-bet True
+      ] ; now the agent knows betting exists
+      [
+        set sentiment sentiment + 0.1 ; heard of advertisment again. people are likely to only remember 10% of ads they hear about
+      ]
     ]
   ]
 end
@@ -285,30 +297,29 @@ end
 ;; TURTLE METHODS
 ;;
 
-;; stop betting if money is too negative
-to stop-betting
-  if money < -1000
-  [ set likelihood 0 ]
-end
-
 ;; if winning of individual is high show UI
 to show-faces-for-money
-  ifelse money > 1500
-  [ set shape "face happy"]
-  [
-    ifelse (money < -500) and (money > -1000)
-    [ set shape "face sad"]
-    [
-      ifelse (money < -1000)
-      [ set shape "x"
-        ; set color red (leave color according to groups for now. Can change to make more obvious)
-      ]
-      [
-        set shape "person"
 
+  if (([breed] of self) != non-bettors) ;; don't change shape of non-bettors
+  [
+    ifelse money > 1500
+    [ set shape "face happy"]
+    [
+      ifelse (money < 500) and (money > 0)
+      [ set shape "face sad"]
+      [
+        ifelse (money <= 0)
+        [ set shape "x"
+          ; set color red (leave color according to groups for now. Can change to make more obvious)
+        ]
+        [
+          set shape "person"
+
+        ]
       ]
     ]
   ]
+
 
 end
 
@@ -317,25 +328,24 @@ to spread-bet
   set neighbor one-of turtles-on neighbors ;;TODO: is it right to just randomly pick one neighbor?
   ;; spread betting info by person
 
-  ;; how likely to spread TODO: make this based on literature
-  if random(100) < 20
+  if random(100) < 33 ;; 33% influence by peers on spreading of problem
   [
-    ;; want to implement some sort of ui that shows that a bet was advertised
-    ask patch-here
+    if (neighbor != nobody) and ([breed] of self != non-bettors)
     [
-      if (pcolor != blue) and (pcolor != pink)
-      [ set delay-ticks ticks
-        set pcolor pink
+      ;; want to implement some sort of ui that shows that a bet was advertised
+      ask patch-here
+      [
+        if (pcolor != blue) and (pcolor != pink)
+        [ set delay-ticks ticks
+          set pcolor pink
+        ]
       ]
-    ]
 
-    if neighbor != nobody
-    [
       ask neighbor [
         ;;TODO: Make this not deterministic. Add social probabilities.
         ;; want to implement some sort of ui that shows that a bet was advertised
         set heard-of-bet True ; now the agent knows betting exists
-        set sentiment sentiment + success * 0.1; the success of the one who advertises affect sentiment
+        set sentiment sentiment + success * 1.64; the success of the one who advertises affect sentiment
       ]
     ]
 
@@ -363,21 +373,22 @@ to generate-odds
   set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
 end
 
-
-
 ;; problem-bettors
 to bet-problem
-  if likelihood * 100 >  random(100) ;; so if likelihood * 100 gives me a number larger than the random chance in 1-100 then bet.
-  [
-   let money-to-bet random (100) ; TODO: (can make these agent owned too) base random amount of money to bet upon literature as well
+  if heard-of-bet = False
+  [ stop ]
 
+  if (likelihood * 100 >  random(100)) and (money > 0) ;; so if likelihood * 100 gives me a number larger than the random chance in 1-100 then bet.
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
    ; see if he wins
     ifelse seeIfWon betting-odds = 1
-   [ set money money + betting-odds * money-to-bet
+   [ set money money + betting-odds * curr-bet
      set success success + 1
    ]
-   [ set money money - money-to-bet
-     set company-wins company-wins + money-to-bet
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
      set success success - 1
    ]
 
@@ -386,55 +397,67 @@ end
 
 ;; moderate-bettors
 to bet-moderate
-  if likelihood * 100 >  random(100)
-  [
-   let money-to-bet random (50) ; TODO: base random amount of money to bet upon literature as well
+  if heard-of-bet = False
+  [ stop ]
 
+  if (likelihood * 100 >  random(100)) and (money > 0)
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
    ; see if he wins
    ifelse seeIfWon betting-odds = 1
-   [ set money money + betting-odds * money-to-bet
+   [ set money money + betting-odds * curr-bet
      set success success + 1
    ]
-   [ set money money - money-to-bet
-     set company-wins company-wins + money-to-bet
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
      set success success - 1
    ]
+
   ]
 end
 
 ;; risk-averse-bettors
 to bet-risk-averse
-  if likelihood * 100 >  random(100)
-  [
-   let money-to-bet random (20) ; TODO: base random amount of money to bet upon literature as well
+  if heard-of-bet = False
+  [ stop ]
 
+  if (likelihood * 100 >  random(100)) and (money > 0)
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
    ; see if he wins
    ifelse seeIfWon betting-odds = 1
-   [ set money money + betting-odds * money-to-bet
+   [ set money money + betting-odds * curr-bet
      set success success + 1
    ]
-   [ set money money - money-to-bet
-     set company-wins company-wins + money-to-bet
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
      set success success - 1
    ]
+    set number-of-bets-made number-of-bets-made + 1
   ]
 end
 
 ;; pathological-bettors
 to bet-pathological
-  if likelihood * 100 >  random(100)
-  [
-   let money-to-bet random (150) ; TODO: base random amount of money to bet upon literature as well
+  if heard-of-bet = False
+  [ stop ]
 
+  if (likelihood * 100 >  random(100)) and (money > 0)
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
    ; see if he wins
    ifelse seeIfWon betting-odds = 1
-   [ set money money + betting-odds * money-to-bet
+   [ set money money + betting-odds * curr-bet
      set success success + 1
    ]
-   [ set money money - money-to-bet
-     set company-wins company-wins + money-to-bet
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
      set success success - 1
    ]
+
   ]
 end
 
@@ -470,8 +493,8 @@ to-report all-bankrupt?
   let reportValue False
   ask turtles
   [
-    set numberBankrupt count turtles with [likelihood = 0]
-    if numberBankrupt = num-people
+    set numberBankrupt count turtles with [money <= 0]
+    if numberBankrupt = num-bettors
     [ set reportValue True ]
   ]
 
@@ -481,6 +504,12 @@ to-report all-bankrupt?
 
 end
 
+to-report money-to-bet [curr-money]
+  let toReport ceiling((((random(13) + 12) / 100) * curr-money) * 0.25)
+  ifelse toReport != 0
+  [report toReport];; basically 12-25% of current money. Also doing bets every 4 ticks for a month.
+  [report curr-money]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -574,10 +603,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-24
-368
-116
-413
+676
+129
+768
+174
 Pathological
 count pathological-bettors
 17
@@ -585,10 +614,10 @@ count pathological-bettors
 11
 
 MONITOR
-24
-419
-98
-464
+676
+180
+750
+225
 Moderate
 count moderate-bettors
 17
@@ -596,10 +625,10 @@ count moderate-bettors
 11
 
 MONITOR
-23
-470
-143
-515
+675
+231
+795
+276
 Problem
 count problem-bettors
 17
@@ -607,10 +636,10 @@ count problem-bettors
 11
 
 MONITOR
-24
-523
-113
-568
+676
+284
+765
+329
 Risk Averse
 count risk-averse-bettors
 17
@@ -629,10 +658,10 @@ seed-randomly?
 -1000
 
 PLOT
-168
-466
-773
-734
+260
+465
+865
+733
 Money of Bettors on Average
 time
 money
@@ -650,10 +679,10 @@ PENS
 "risk-averse" 1.0 0 -13840069 true "" "plot mean [money] of risk-averse-bettors"
 
 MONITOR
-12
-602
-148
-647
+664
+363
+800
+408
 Company Winnings
 company-wins
 17
@@ -661,10 +690,10 @@ company-wins
 11
 
 MONITOR
-11
-256
-142
-301
+663
+17
+794
+62
 Number of People
 num-people
 17
@@ -672,12 +701,105 @@ num-people
 11
 
 MONITOR
-15
-311
-161
-356
+667
+72
+813
+117
 Number of Bankrupt
 numberBankrupt
+17
+1
+11
+
+SLIDER
+12
+256
+184
+289
+average-salary
+average-salary
+10000
+30000
+24361.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+13
+298
+185
+331
+tax-deterrent-perc
+tax-deterrent-perc
+0
+100
+20.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+12
+337
+184
+370
+gamblers-perc
+gamblers-perc
+0
+100
+76.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+783
+134
+864
+179
+# of bettors
+num-bettors
+17
+1
+11
+
+SLIDER
+16
+381
+188
+414
+advertisement-perc
+advertisement-perc
+0
+100
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+789
+294
+872
+339
+# bets made
+number-of-bets-made
+17
+1
+11
+
+MONITOR
+806
+201
+901
+246
+# heard of bet
+count turtles with [heard-of-bet = True]
 17
 1
 11
