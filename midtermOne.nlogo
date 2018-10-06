@@ -5,9 +5,9 @@
 ;; generate betting draws each time
 ;; population has fixed distribution of people who bet
 ;; randomly scatter these people in the patches, might end up with patches with no gamblers
-
-
 ;; possibly include way using interaction to choose where to start betting firm( use mouse to click on grid or randomly place one)
+
+;;Other Variables that can be used are on the DOC (Maybe first code something then implement probability)
 
 
 ;;
@@ -16,8 +16,58 @@
 
 turtles-own[
   money ;; money that turtle has at one point
-  success ;; how many neighbors are successful
-  risk-tolerance ;; how likely to risk
+  sentiment ;; TODO: use this variable, what is the agents sentiment towards betting (influenced by social factors)
+  success ;; TODO: use this variable, how successful the agent currently is in bets
+  agentcolor ;; give agents a color variable
+  heard-of-bet ;; did the agent hear that betting exists
+]
+
+;; Problem Gamblers, Moderate-Risk Gamblers, Pathological Gamblers, and Gambler Averse
+;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4500885/
+;;1) non-problem gamblers (score of 0);
+;;2) risk-averse gamblers
+;;3) moderate-risk gamblers
+;;4) problem gamblers
+;;5) pathological
+
+breed [non-bettors non-bettor-one]
+breed [problem-bettors problem-one]
+breed [moderate-bettors moderate-one]
+breed [risk-averse-bettors risk-averse-one]
+breed [pathological-bettors pathological-one]
+
+non-bettors-own [
+  likelihood
+]
+
+problem-bettors-own [
+  likelihood
+
+]
+
+moderate-bettors-own [
+  likelihood
+
+]
+
+risk-averse-bettors-own [
+  likelihood
+
+]
+
+pathological-bettors-own [
+  likelihood
+
+]
+
+;;
+;; PATCH VARIABLES
+;;
+
+patches-own[
+  times-bet-advertised  ;; TODO: we're tracking this, but not using it atm.
+  neighborhood ;; TODO: use this variable, vision radius of the patch
+  delay-ticks ;; use this variable to have the patches change color for some ticks (can add to interface...)
 ]
 
 ;;
@@ -25,93 +75,138 @@ turtles-own[
 ;;
 
 globals[
+  betting-odds ; the global betting odds offered at that tick
+  percent-pathological ; percent of pathological bettors in a population
+  percent-moderate
+  percent-problem
+  percent-risk-averse
+
+  company-wins ;; money betting company wins
+  numberBankrupt ;; tracking bankrupt agents
+  num-bettors
+  number-of-bets-made
+
 
 ]
 
 ;;;
-;;; SETUP AND HELPERS
+;;; SETUP
 ;;;
 
 to setup
   clear-all
+  reset-ticks
+  setup-globals
   setup-turtles
   setup-patches
-  reset-ticks
+  ifelse seed-randomly? = True
+  [ seed-random ]
+  [ seed-one ]
 end
 
 
 to setup-patches
-  ask patches [
+  ask patches[
     let rand random(2)
-    ifelse rand = 1
-      [ set pcolor yellow ]
-      [ set pcolor yellow + 1]
+    set pcolor black
+
   ]
 end
+
+to setup-globals
+  set company-wins 0
+  set number-of-bets-made 0
+
+  ;; set the global vars for percent of population
+  ;; from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4500885/
+  set percent-pathological random-float (0.013) + 0.005 ;; 1.3-1.8%
+  set percent-moderate 0.40
+  set percent-problem 0.20
+  set percent-risk-averse 0.38
+end
+
 
 to setup-turtles
   set-default-shape turtles "person"
-  create-turtles num-people
-    [ move-to one-of patches
+  set num-bettors round(num-people * (gamblers-perc * 0.01))
+  let new-tax-deterrent-perc tax-deterrent-perc * 0.01 ;; setting tax-deterrent-perc changes ui
+
+  ; number of people that don't bet is number of gamblers minus number of people that bet
+  let number-non-bet num-people - num-bettors
+  ; 2% of population is pathological bettors
+  let number-pathological ceiling(percent-pathological * num-bettors) ; ceil this because want at least 1
+  ; 40% of population is moderate
+  let number-moderate floor(percent-moderate * num-bettors)
+  ; 20% of population is problem
+  let number-problem floor(percent-problem * num-bettors)
+  ; rest is risk averse
+  let number-risk-averse num-bettors - number-problem - number-moderate - number-pathological
+
+  ;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
+  create-non-bettors number-non-bet
+  [ set likelihood 0
+    set color magenta
+    set shape "turtle" ;; indestructible turtle?
+  ]
+
+  create-problem-bettors number-problem
+  [ set likelihood 0.7
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
+    set color orange
+  ]
+  create-moderate-bettors number-moderate
+  [ set likelihood 0.4
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
+    set color yellow
+  ]
+  create-risk-averse-bettors number-risk-averse
+  [ set likelihood 0.2
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
+
+    set color green
+  ]
+  create-pathological-bettors number-pathological
+  [ set likelihood 0.9
+    set likelihood likelihood * (1 - new-tax-deterrent-perc)
+    set color red
+  ]
+
+  ;; general turtle setup
+  ask turtles
+  [ move-to one-of patches
       set size 1.5 ;; easier to see
       set-initial-turtle-vars
-
-    ]
-
-
-end
-
-;; TURTLE METHODS
-to set-initial-turtle-vars
-  set money random 1000 ;;
-  set risk-tolerance random 100 ;;randomly assign risk tolerance
-  set success random 10 ;; TEMPORARY
-end
-
-;; MOVE TURTLES
-to move-turtles
-  ;; picked direction
-  ask turtles [
-    let pick-dir random 4
-    ifelse (pick-dir = 0)
-    [ set heading 0 ]
-    [ ifelse (pick-dir = 1)
-      [ set heading 90 ]
-      [ ifelse (pick-dir = 2)
-        [ set heading 180 ]
-        [ set heading 270 ]
-      ]
-    ]
-
-    ;;move
-    fd 1
-
-    ;; check neighbors within their patch
-    ;ask turtles-on patch-here
-
-    ;ask patches in-radius 1 [
-    ;  ifelse 6 > 5
-    ;    [ set pcolor red ]
-    ;    [ set pcolor blue ]
-    ;]
-
-    ;set success-patch sum[success] of patch-here
-
-    ask turtles-on patch-here [
-      ifelse sum [success] of turtles-on patch-here > 4
-        [ set color blue ]
-        [ set color black ]
-    ]
-
-
 
   ]
 
 end
 
-;; method to generate random draws after a specified interval(each tick maybe?)
-to generate-draws
 
+to set-initial-turtle-vars
+  set success 0 ;; begin with a success rate of 0
+  set sentiment 0.5 ;; neutral sentiment to start from
+  set times-bet-advertised 0 ;; they haven't been advertised to yet
+  set money random (average-salary) + 10000 ;;number based on average salary in kenya. Taking a range [10k, avg + 10k]
+  set heard-of-bet False
+
+end
+
+;; let one patch know of bet
+to seed-one
+  ;; tell center patch about betting
+  ask patch 0 0 [
+    hear-bet
+  ]
+
+end
+
+;; let random patches know of bet
+to seed-random
+  ask patches with [times-bet-advertised = 0] [
+    if (random-float 100.0) < init-advertisements [
+      hear-bet
+    ]
+  ]
 end
 
 ;;
@@ -120,12 +215,300 @@ end
 
 to go
   ask patches [
-    ifelse pcolor = yellow
-      [ set pcolor yellow + 1 ]
-      [ set pcolor yellow ]
+    check-patches-ticks
+    hear-bet
   ]
-  move-turtles
+
+  ask turtles [
+    ;; IDEA: Can add breeds for different agents as such (from Rebellion Model):
+    ;; Use this to model the different types of agents we will have.
+    ; Rule M: Move to a random site within your vision
+    ;if (breed = agents and jail-term = 0) or breed = cops [ move ]
+    ;   Rule A: Determine if each agent should be active or quiet
+    ;if breed = agents and jail-term = 0 [ determine-behavior ]
+    ;  Rule C: Cops arrest a random active agent within their radius
+    ;if breed = cops [ enforce ]
+
+    move-turtles
+    ;; TODO: Do something when a turtle hears a bet. Make it check to see if patch was advertised to...
+    spread-bet ;; will spread the bet AND INFLUENCE of the person that says it to neighbors
+
+    show-faces-for-money
+
+    if ticks mod 4 = 0 ;; every bet should represent a month so 4 ticks for a month?
+    [
+      bet-problem
+      bet-moderate
+      bet-risk-averse
+      bet-pathological
+    ]
+
+
+
+
+
+  ]
+
+  if all-bankrupt?
+  [
+    user-message (word "There are " numberBankrupt " Bankrupt People! That's all of the bettors!")
+    stop
+  ]
   tick
+end
+
+;;
+;; PATCH METHODS
+;;
+
+to hear-bet
+
+  ;; randomly advertise to advertisement-perc of patches
+  if random(100) < advertisement-perc * 0.01
+  [
+    set times-bet-advertised times-bet-advertised + 1 ;; TODO: not using this atm
+
+    ;; want to implement some sort of ui that shows that a bet was advertised
+    if (pcolor != blue) and (pcolor != pink)
+    [ set delay-ticks ticks
+      set pcolor blue
+    ]
+
+    ask turtles-here
+    [
+      ifelse heard-of-bet = False
+      [ set heard-of-bet True
+      ] ; now the agent knows betting exists
+      [
+        set sentiment sentiment + 0.1 ; heard of advertisment again. people are likely to only remember 10% of ads they hear about
+      ]
+    ]
+  ]
+end
+
+;; check the delay-tick variable for each patch, and if >=2 ticks have passed since being
+;; set up then, revert the color back to original black
+to check-patches-ticks
+  if ticks - delay-ticks >= 2
+  [ set pcolor black ]
+end
+
+;;
+;; TURTLE METHODS
+;;
+
+;; if winning of individual is high show UI
+to show-faces-for-money
+
+  if (([breed] of self) != non-bettors) ;; don't change shape of non-bettors
+  [
+    ifelse money > 1500
+    [ set shape "face happy"]
+    [
+      ifelse (money < 500) and (money > 0)
+      [ set shape "face sad"]
+      [
+        ifelse (money <= 0)
+        [ set shape "x"
+          ; set color red (leave color according to groups for now. Can change to make more obvious)
+        ]
+        [
+          set shape "person"
+
+        ]
+      ]
+    ]
+  ]
+
+
+end
+
+to spread-bet
+  let neighbor nobody ; making a neighbor value equal no agent for now
+  set neighbor one-of turtles-on neighbors ;;TODO: is it right to just randomly pick one neighbor?
+  ;; spread betting info by person
+
+  if random(100) < 33 ;; 33% influence by peers on spreading of problem
+  [
+    if (neighbor != nobody) and ([breed] of self != non-bettors)
+    [
+      ;; want to implement some sort of ui that shows that a bet was advertised
+      ask patch-here
+      [
+        if (pcolor != blue) and (pcolor != pink)
+        [ set delay-ticks ticks
+          set pcolor pink
+        ]
+      ]
+
+      ask neighbor [
+        ;;TODO: Make this not deterministic. Add social probabilities.
+        ;; want to implement some sort of ui that shows that a bet was advertised
+        set heard-of-bet True ; now the agent knows betting exists
+        set sentiment sentiment + success * 1.64; the success of the one who advertises affect sentiment
+      ]
+    ]
+
+  ]
+
+end
+
+;; create an array the size of the odds+1, so 7:1 means 8 slots. Randomly fall on one to determine if won or loss.
+to-report seeIfWon [odds]
+  let winArray n-values odds [0]
+  set winArray lput 1 winArray
+  let randompick one-of winArray
+  ifelse randompick = 1
+  [ report True ]
+  [ report False]
+end
+
+;; generate a betting option every tick and broadcast. Those that want to participate can.
+;; Thought about multiple options, but then you'd need to make some values that'd make agents pick one over other...
+to generate-odds
+  let max-extreme 16
+  let min-extreme 1
+
+  ;; Don't want to deal with arrays at the moment...might need to use extensions for that
+  set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
+end
+
+;; problem-bettors
+to bet-problem
+  if heard-of-bet = False
+  [ stop ]
+
+  if (likelihood * 100 >  random(100)) and (money > 0) ;; so if likelihood * 100 gives me a number larger than the random chance in 1-100 then bet.
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
+   ; see if he wins
+    ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * curr-bet
+     set success success + 1
+   ]
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
+     set success success - 1
+   ]
+
+  ]
+end
+
+;; moderate-bettors
+to bet-moderate
+  if heard-of-bet = False
+  [ stop ]
+
+  if (likelihood * 100 >  random(100)) and (money > 0)
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
+   ; see if he wins
+   ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * curr-bet
+     set success success + 1
+   ]
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
+     set success success - 1
+   ]
+
+  ]
+end
+
+;; risk-averse-bettors
+to bet-risk-averse
+  if heard-of-bet = False
+  [ stop ]
+
+  if (likelihood * 100 >  random(100)) and (money > 0)
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
+   ; see if he wins
+   ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * curr-bet
+     set success success + 1
+   ]
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
+     set success success - 1
+   ]
+    set number-of-bets-made number-of-bets-made + 1
+  ]
+end
+
+;; pathological-bettors
+to bet-pathological
+  if heard-of-bet = False
+  [ stop ]
+
+  if (likelihood * 100 >  random(100)) and (money > 0)
+  [
+   let curr-bet money-to-bet money
+   set number-of-bets-made number-of-bets-made + 1
+   ; see if he wins
+   ifelse seeIfWon betting-odds = 1
+   [ set money money + betting-odds * curr-bet
+     set success success + 1
+   ]
+   [ set money money - curr-bet
+     set company-wins company-wins + curr-bet
+     set success success - 1
+   ]
+
+  ]
+end
+
+;; MOVE TURTLES
+to move-turtles
+  ;; picked direction
+
+  let pick-dir random 4
+  ifelse (pick-dir = 0)
+  [ set heading 0 ]
+  [ ifelse (pick-dir = 1)
+    [ set heading 90 ]
+    [ ifelse (pick-dir = 2)
+      [ set heading 180 ]
+      [ set heading 270 ]
+    ]
+  ]
+  ;; move
+  fd 1
+
+end
+
+;; reporting success of neighbors, TODO: Find numbers for this and actually use the function. Currently isn't being used.
+to-report check-neighbor-success
+  ; checking influence of neighboring success
+  ifelse sum [success] of turtles-on neighbors > 4
+  [ report True ]
+  [ report False ]
+end
+
+;; checking to see if everyone is bankrupt and can't bet anymore so I stop model
+to-report all-bankrupt?
+  let reportValue False
+  ask turtles
+  [
+    set numberBankrupt count turtles with [money <= 0]
+    if numberBankrupt = num-bettors
+    [ set reportValue True ]
+  ]
+
+  ifelse reportValue
+  [ report True]
+  [ report False]
+
+end
+
+to-report money-to-bet [curr-money]
+  let toReport ceiling((((random(13) + 12) / 100) * curr-money) * 0.25)
+  ifelse toReport != 0
+  [report toReport];; basically 12-25% of current money. Also doing bets every 4 ticks for a month.
+  [report curr-money]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -156,10 +539,10 @@ ticks
 30.0
 
 BUTTON
-11
-74
-84
-107
+92
+142
+165
+175
 setup
 setup
 NIL
@@ -190,19 +573,236 @@ NIL
 0
 
 SLIDER
-28
-205
-200
-238
+13
+219
+185
+252
 num-people
 num-people
 0
 100
-51.0
+39.0
 1
 1
 NIL
 HORIZONTAL
+
+SLIDER
+9
+79
+209
+112
+init-advertisements
+init-advertisements
+0
+10
+4.5
+0.1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+676
+129
+768
+174
+Pathological
+count pathological-bettors
+17
+1
+11
+
+MONITOR
+676
+180
+750
+225
+Moderate
+count moderate-bettors
+17
+1
+11
+
+MONITOR
+675
+231
+795
+276
+Problem
+count problem-bettors
+17
+1
+11
+
+MONITOR
+676
+284
+765
+329
+Risk Averse
+count risk-averse-bettors
+17
+1
+11
+
+SWITCH
+23
+35
+193
+68
+seed-randomly?
+seed-randomly?
+1
+1
+-1000
+
+PLOT
+260
+465
+865
+733
+Money of Bettors on Average
+time
+money
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"pathological" 1.0 0 -8053223 true "" "plot mean [money] of pathological-bettors"
+"moderate" 1.0 0 -1184463 true "" "plot mean [money] of moderate-bettors"
+"problem" 1.0 0 -817084 true "" "plot mean [money] of problem-bettors"
+"risk-averse" 1.0 0 -13840069 true "" "plot mean [money] of risk-averse-bettors"
+
+MONITOR
+664
+363
+800
+408
+Company Winnings
+company-wins
+17
+1
+11
+
+MONITOR
+663
+17
+794
+62
+Number of People
+num-people
+17
+1
+11
+
+MONITOR
+667
+72
+813
+117
+Number of Bankrupt
+numberBankrupt
+17
+1
+11
+
+SLIDER
+12
+256
+184
+289
+average-salary
+average-salary
+10000
+30000
+24361.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+13
+298
+185
+331
+tax-deterrent-perc
+tax-deterrent-perc
+0
+100
+20.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+12
+337
+184
+370
+gamblers-perc
+gamblers-perc
+0
+100
+76.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+783
+134
+864
+179
+# of bettors
+num-bettors
+17
+1
+11
+
+SLIDER
+16
+381
+188
+414
+advertisement-perc
+advertisement-perc
+0
+100
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+789
+294
+872
+339
+# bets made
+number-of-bets-made
+17
+1
+11
+
+MONITOR
+806
+201
+901
+246
+# heard of bet
+count turtles with [heard-of-bet = True]
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
