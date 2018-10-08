@@ -9,6 +9,16 @@
 
 ;;Other Variables that can be used are on the DOC (Maybe first code something then implement probability)
 
+;;additional information:
+;;when presented with a bet, the 3 types of gamblers will have different utility functions
+;;For risk averse, we will assign a likelihood that will give resemble the utility curve of a risk averse gambler
+;;For moderate, gamblers we can randomly distribute utility curves(some a bit risk averse, some problem)
+;;For problem, assign utility curve that is risk seeking
+
+
+
+
+
 
 ;;
 ;; TURTLE VARIABLES
@@ -36,7 +46,7 @@ breed [moderate-bettors moderate-one]
 breed [risk-averse-bettors risk-averse-one]
 breed [pathological-bettors pathological-one]
 
-non-bettors-own [ likelihood ]
+
 problem-bettors-own [ likelihood ]
 moderate-bettors-own [ likelihood ]
 risk-averse-bettors-own [ likelihood ]
@@ -63,6 +73,7 @@ globals[
   num-bettors ;; number of betters
   number-of-bets-made
   sum-percentages ;;
+  winning-outcome ;;
 ]
 
 ;;;
@@ -121,8 +132,7 @@ to setup-turtles
 
   ;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
   create-non-bettors number-non-bet
-  [ set likelihood 0
-    set color magenta
+  [ set color magenta
     set shape "turtle" ;; indestructible turtle? ~ love it!
   ]
 
@@ -191,32 +201,39 @@ to go
   ]
 
   ask turtles [
-    ;; IDEA: Can add breeds for different agents as such (from Rebellion Model):
-    ;; Use this to model the different types of agents we will have.
-    ; Rule M: Move to a random site within your vision
-    ;if (breed = agents and jail-term = 0) or breed = cops [ move ]
-    ;   Rule A: Determine if each agent should be active or quiet
-    ;if breed = agents and jail-term = 0 [ determine-behavior ]
-    ;  Rule C: Cops arrest a random active agent within their radius
-    ;if breed = cops [ enforce ]
-
     move-turtles
     ;; TODO: Do something when a turtle hears a bet. Make it check to see if patch was advertised to...
     spread-bet ;; will spread the bet AND INFLUENCE of the person that says it to neighbors
-
     show-faces-for-money
-
-    ;; turtles should bet each week(i.e that's when the bets occur)
-    bet-problem
-    bet-moderate
-    bet-risk-averse
-    bet-pathological
-
-    if ticks mod 15 = 0[
-      earn-income
-    ]
   ]
 
+  ;;generate odds and get the winning outcome
+  generate-odds
+  set winning-outcome betting-odds
+
+
+
+  ;; turtles should bet each week(i.e that's when the bets occur)
+  ask problem-bettors[
+    bet-problem
+  ]
+  ask moderate-bettors [
+    bet-moderate
+  ]
+  ask risk-averse-bettors [
+    bet-risk-averse
+  ]
+  ask pathological-bettors[
+    bet-pathological
+  ]
+
+
+  ask turtles [
+    if ticks mod 15 = 0
+    [earn-income]
+  ]
+
+  ;; stop model if all users are bankrupt
   if all-bankrupt?
   [
     user-message (word "There are " numberBankrupt " Bankrupt People! That's all of the bettors!")
@@ -307,8 +324,6 @@ to spread-bet
         ;; want to implement some sort of ui that shows that a bet was advertised
 
         ;;will implement study done on rate of cocnversion
-
-
         set heard-of-bet True ; now the agent knows betting exists
         set sentiment sentiment + success * 1.64; the success of the one who advertises affect sentiment( need supporting literature)
       ]
@@ -346,8 +361,8 @@ to bet-problem
   [
    let curr-bet money-to-bet money
    set number-of-bets-made number-of-bets-made + 1
-   ; see if he wins
-    ifelse seeIfWon betting-odds = 1
+   ; see if agent wins
+    ifelse winning-outcome = 1
    [ set money money + betting-odds * curr-bet
      set success success + 1
      set company-wins (company-wins - betting-odds * curr-bet)
@@ -370,7 +385,7 @@ to bet-moderate
    let curr-bet money-to-bet money
    set number-of-bets-made number-of-bets-made + 1
    ; see if agent wins and remove money from company winnings
-   ifelse seeIfWon betting-odds = 1
+   ifelse winning-outcome = 1
    [ set money (money + betting-odds * curr-bet)
      set success success + 1
      set company-wins (company-wins - betting-odds * curr-bet)
@@ -379,7 +394,6 @@ to bet-moderate
      set company-wins company-wins + curr-bet
      set success success - 1
    ]
-
   ]
 end
 
@@ -393,7 +407,7 @@ to bet-risk-averse
    let curr-bet money-to-bet money
    set number-of-bets-made number-of-bets-made + 1
    ; see if agent wins
-   ifelse seeIfWon betting-odds = 1
+   ifelse winning-outcome = 1
    [ set money money + betting-odds * curr-bet
      set success success + 1
      set company-wins (company-wins - betting-odds * curr-bet)
@@ -416,7 +430,7 @@ to bet-pathological
    let curr-bet money-to-bet money
    set number-of-bets-made number-of-bets-made + 1
    ; see if he wins
-   ifelse seeIfWon betting-odds = 1
+   ifelse winning-outcome = 1
    [ set money money + betting-odds * curr-bet
      set success success + 1
      set company-wins (company-wins - betting-odds * curr-bet)
@@ -427,6 +441,14 @@ to bet-pathological
    ]
   ]
 end
+
+;;function to set utility function with each odds
+to set-utility[odds]
+  ask risk-averse-bettors [
+  ]
+
+end
+
 
 ;; MOVE TURTLES
 to move-turtles
@@ -473,10 +495,6 @@ to-report money-to-bet [curr-money]
   ifelse toReport != 0
   [report toReport];; basically 12-25% of current money.
   [report curr-money]
-end
-
-
-to reward-winner [odds]
 end
 
 ;;let the agents earn the average income after every 4 ticks i.e. for a month
@@ -814,7 +832,7 @@ percent-pathological
 percent-pathological
 0
 100
-3.0
+4.0
 1
 1
 NIL
@@ -829,7 +847,7 @@ percent-problem
 percent-problem
 0
 100
-7.0
+32.0
 1
 1
 NIL
@@ -859,7 +877,7 @@ percent-risk-averse
 percent-risk-averse
 0
 100
-38.2
+28.0
 1
 1
 NIL
