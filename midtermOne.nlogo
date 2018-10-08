@@ -63,6 +63,12 @@ globals[
   num-bettors ;; number of betters
   number-of-bets-made
   sum-percentages ;;
+
+  average-pathological
+  average-problem
+  average-moderate
+  average-risk-averse
+
 ]
 
 ;;;
@@ -79,6 +85,8 @@ to setup
   ifelse seed-randomly? = True
   [ seed-random ]
   [ seed-one ]
+
+  update-smoothing-graph
 end
 
 ;;This procedure checks if the user specified percentages sum to 100 to get valid results
@@ -100,6 +108,10 @@ to setup-globals
   set number-of-bets-made 0
   set numberBankrupt 0
   set sum-percentages sum (list percent-moderate percent-problem percent-pathological percent-risk-averse)
+  set average-pathological []
+  set average-problem []
+  set average-moderate []
+  set average-risk-averse []
 end
 
 
@@ -160,7 +172,7 @@ to set-initial-turtle-vars
   set success 0 ;; begin with a success rate of 0
   set sentiment 0.5 ;; neutral sentiment to start from
   set times-bet-advertised 0 ;; they haven't been advertised to yet
-  set money random (average-salary) + 10000 ;;number based on average salary in kenya. Taking a range [10k, avg + 10k]
+  set money random-normal average-salary (average-salary / 0.3) ;;number based on average salary in kenya. Mean at average-salary and std dev 0.3
   set heard-of-bet False
 end
 
@@ -222,6 +234,8 @@ to go
     user-message (word "There are " numberBankrupt " Bankrupt People! That's all of the bettors!")
     stop
   ]
+
+  update-smoothing-graph
   tick
 end
 
@@ -483,6 +497,28 @@ end
 to earn-income
     set money 10000
 end
+
+to-report help-smooth [arr window-size curr-breed] ;; smooths the arrays in place according to window size
+
+  ifelse length arr < window-size
+  [ set arr lput (mean [money] of curr-breed) arr]
+  [ set arr (sublist arr 1 (length arr)) ;; get last 4 values of list
+    set arr lput (mean [money] of curr-breed) arr] ;; add latest value to array
+  report arr
+
+end
+
+
+;; smooth the output of average money based on last 5 average money of bettors
+to update-smoothing-graph
+  let window-size 100
+
+  set average-pathological (help-smooth average-pathological window-size pathological-bettors)
+  set average-problem (help-smooth average-problem window-size problem-bettors)
+  set average-moderate (help-smooth average-moderate window-size moderate-bettors)
+  set average-risk-averse (help-smooth average-risk-averse window-size risk-averse-bettors)
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 1208
@@ -646,10 +682,10 @@ true
 true
 "" ""
 PENS
-"pathological" 1.0 0 -8053223 true "" "plot mean [money] of pathological-bettors"
-"moderate" 1.0 0 -1184463 true "" "plot mean [money] of moderate-bettors"
-"problem" 1.0 0 -817084 true "" "plot mean [money] of problem-bettors"
-"risk-averse" 1.0 0 -13840069 true "" "plot mean [money] of risk-averse-bettors"
+"pathological" 1.0 0 -8053223 true "" "plot mean average-pathological"
+"moderate" 1.0 0 -1184463 true "" "plot mean average-moderate"
+"problem" 1.0 0 -817084 true "" "plot mean average-problem"
+"risk-averse" 1.0 0 -13840069 true "" "plot mean average-risk-averse"
 
 MONITOR
 559
@@ -814,7 +850,7 @@ percent-pathological
 percent-pathological
 0
 100
-3.0
+17.0
 1
 1
 NIL
@@ -829,7 +865,7 @@ percent-problem
 percent-problem
 0
 100
-7.0
+10.0
 1
 1
 NIL
@@ -851,15 +887,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-729
+723
 203
-925
+919
 236
 percent-risk-averse
 percent-risk-averse
 0
 100
-38.2
+37.0
 1
 1
 NIL
