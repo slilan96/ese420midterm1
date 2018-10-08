@@ -14,6 +14,7 @@
 ;;For risk averse, we will assign a likelihood that will give resemble the utility curve of a risk averse gambler
 ;;For moderate, gamblers we can randomly distribute utility curves(some a bit risk averse, some problem)
 ;;For problem, assign utility curve that is risk seeking
+;;
 
 
 
@@ -221,9 +222,7 @@ to go
 
   ;;generate odds and get the winning outcome
   generate-odds
-  set winning-outcome betting-odds
-
-
+  set winning-outcome seeIfWon betting-odds
 
   ;; turtles should bet each week(i.e that's when the bets occur)
   ask problem-bettors[
@@ -351,9 +350,7 @@ to-report seeIfWon [odds]
   let winArray n-values odds [0]
   set winArray lput 1 winArray
   let randompick one-of winArray
-  ifelse randompick = 1
-  [ report True ]
-  [ report False]
+  report randomPick
 end
 
 ;; generate a betting option every tick and broadcast. Those that want to participate can.
