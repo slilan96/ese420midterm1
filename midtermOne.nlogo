@@ -30,7 +30,8 @@ turtles-own[
   sentiment ;; TODO: use this variable, what is the agents sentiment towards betting (influenced by social factors)
   success ;; TODO: use this variable, how successful the agent currently is in bets
   agentcolor ;; give agents a color variable
-  heard-of-bet ;; did the agent hear that betting exists
+  heard-of-bet ;; did the agent hear that betting existss
+  salary ;; monthly salary
 ]
 
 ;; Problem Gamblers, Moderate-Risk Gamblers, Pathological Gamblers, and Gambler Averse
@@ -183,7 +184,8 @@ to set-initial-turtle-vars
   set success 0 ;; begin with a success rate of 0
   set sentiment 0.5 ;; neutral sentiment to start from
   set times-bet-advertised 0 ;; they haven't been advertised to yet
-  set money random-normal average-salary (average-salary / 0.3) ;;number based on average salary in kenya. Mean at average-salary and std dev 0.3
+  set salary random-normal average-salary (average-salary / 0.3) ;;number based on average salary in kenya. Mean at average-salary and std dev 0.3
+  set money salary
   set heard-of-bet False
 end
 
@@ -240,7 +242,7 @@ to go
 
 
   ask turtles [
-    if ticks mod 15 = 0
+    if ticks mod 30 = 0
     [earn-income]
   ]
 
@@ -295,13 +297,13 @@ end
 to show-faces-for-money
   if (([breed] of self) != non-bettors) ;; don't change shape of non-bettors
   [
-    ifelse money > 1500
+    ifelse money > 32000
     [ set shape "face happy"]
     [
-      ifelse (money < 500) and (money > 0)
+      ifelse (money < 16000) and (money > 0)
       [ set shape "face sad"]
       [
-        ifelse (money <= 0)
+        ifelse (money <= 5000)
         [ set shape "x"
           set color red ;; (leave color according to groups for now. Can change to make more obvious)]
         ]
@@ -510,12 +512,12 @@ end
 
 ;;let the agents earn the average income after every 4 ticks i.e. for a month
 to earn-income
-    set money 10000
+    set money (money + salary) * (1 / 12) ;; monthly salary
 end
 
-to-report help-smooth [arr window-size curr-breed] ;; smooths the arrays in place according to window size
+to-report help-smooth [arr window-sz curr-breed] ;; smooths the arrays in place according to window size
 
-  ifelse length arr < window-size
+  ifelse length arr < window-sz
   [ set arr lput (mean [money] of curr-breed) arr]
   [ set arr (sublist arr 1 (length arr)) ;; get last 4 values of list
     set arr lput (mean [money] of curr-breed) arr] ;; add latest value to array
@@ -526,12 +528,10 @@ end
 
 ;; smooth the output of average money based on last 5 average money of bettors
 to update-smoothing-graph
-  let window-size 100
-
-  set average-pathological (help-smooth average-pathological window-size pathological-bettors)
-  set average-problem (help-smooth average-problem window-size problem-bettors)
-  set average-moderate (help-smooth average-moderate window-size moderate-bettors)
-  set average-risk-averse (help-smooth average-risk-averse window-size risk-averse-bettors)
+  set average-pathological (help-smooth average-pathological smoothing-amount pathological-bettors)
+  set average-problem (help-smooth average-problem smoothing-amount problem-bettors)
+  set average-moderate (help-smooth average-moderate smoothing-amount moderate-bettors)
+  set average-risk-averse (help-smooth average-risk-averse smoothing-amount risk-averse-bettors)
 
 end
 @#$#@#$#@
@@ -683,9 +683,9 @@ seed-randomly?
 
 PLOT
 7
-461
+445
 508
-729
+713
 Money of Bettors on Average
 time
 money
@@ -839,10 +839,10 @@ Reports and Graph Area
 0
 
 PLOT
-548
-463
-888
-727
+547
+448
+887
+712
 Company winnings over time
 time
 Winnings
@@ -926,6 +926,21 @@ sum (list percent-pathological percent-problem percent-moderate percent-risk-ave
 17
 1
 11
+
+SLIDER
+80
+723
+273
+756
+smoothing-amount
+smoothing-amount
+1
+50
+15.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
