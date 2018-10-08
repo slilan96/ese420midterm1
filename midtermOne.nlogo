@@ -436,9 +436,24 @@ to bet-pathological
   if heard-of-bet = False
   [ stop ]
 
+
+  let curr-bet money-to-bet money
+
+  ;;utility function for bet pathological
+  ;;check the odds
+  ;;set p = 0.2
+  print(word "odds" betting-odds)
+  let utility-func (0.2 * (betting-odds ) * curr-bet + curr-bet)
+  print(word "utility" utility-func)
+  let p-winning (1 / (betting-odds + 1))
+  let expected-payoff (p-winning * (betting-odds) * curr-bet) - ((1 - p-winning) * curr-bet)
+  print(word "expected" expected-payoff)
+
+  ;;comment to fix later likelihood * 100 >  random(100)
+
   if (likelihood * 100 >  random(100)) and (money > 0)
   [
-   let curr-bet money-to-bet money
+
    set number-of-bets-made number-of-bets-made + 1
    ; see if he wins
    ifelse winning-outcome = 1
@@ -452,14 +467,6 @@ to bet-pathological
    ]
   ]
 end
-
-;;function to set utility function with each odds
-to set-utility[odds]
-  ask risk-averse-bettors [
-  ]
-
-end
-
 
 ;; MOVE TURTLES
 to move-turtles
@@ -510,7 +517,7 @@ end
 
 ;;let the agents earn the average income after every 4 ticks i.e. for a month
 to earn-income
-    set money 10000
+    set money money + 10000
 end
 
 to-report help-smooth [arr window-size curr-breed] ;; smooths the arrays in place according to window size
@@ -677,7 +684,7 @@ SWITCH
 68
 seed-randomly?
 seed-randomly?
-1
+0
 1
 -1000
 
@@ -774,7 +781,7 @@ gamblers-perc
 gamblers-perc
 0
 100
-100.0
+45.0
 1
 1
 NIL
