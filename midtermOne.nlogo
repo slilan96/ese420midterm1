@@ -32,6 +32,7 @@ turtles-own[
   agentcolor ;; give agents a color variable
   heard-of-bet ;; did the agent hear that betting existss
   salary ;; monthly salary
+  bankrupt ;; if you are bankrupt
 ]
 
 ;; Problem Gamblers, Moderate-Risk Gamblers, Pathological Gamblers, and Gambler Averse
@@ -44,15 +45,11 @@ turtles-own[
 
 breed [non-bettors non-bettor-one]
 breed [problem-bettors problem-one]
-breed [moderate-bettors moderate-one]
 breed [risk-averse-bettors risk-averse-one]
-breed [pathological-bettors pathological-one]
 
 
 problem-bettors-own [ likelihood ]
-moderate-bettors-own [ likelihood ]
 risk-averse-bettors-own [ likelihood ]
-pathological-bettors-own [ likelihood ]
 
 ;;
 ;; PATCH VARIABLES
@@ -77,9 +74,7 @@ globals[
   sum-percentages ;;
   winning-outcome ;;
 
-  average-pathological
   average-problem
-  average-moderate
   average-risk-averse
 
 ]
@@ -120,10 +115,8 @@ to setup-globals
   set company-wins 0
   set number-of-bets-made 0
   set numberBankrupt 0
-  set sum-percentages sum (list percent-moderate percent-problem percent-pathological percent-risk-averse)
-  set average-pathological []
+  set sum-percentages sum (list percent-problem percent-risk-averse)
   set average-problem []
-  set average-moderate []
   set average-risk-averse []
 end
 
@@ -135,14 +128,10 @@ to setup-turtles
 
   ; number of people that don't bet is number of gamblers minus number of people that bet
   let number-non-bet num-people - num-bettors
-  ; 2% of population is pathological bettors
-  let number-pathological ceiling(percent-pathological * 0.01 * num-bettors) ; ceil this because want at least 1
-  ; 40% of population is moderate
-  let number-moderate floor(percent-moderate * 0.01 * num-bettors)
   ; 20% of population is problem
   let number-problem floor(percent-problem * 0.01 * num-bettors)
   ; rest is risk averse
-  let number-risk-averse num-bettors - number-problem - number-moderate - number-pathological
+  let number-risk-averse num-bettors - number-problem
 
   ;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
   create-non-bettors number-non-bet
@@ -155,20 +144,10 @@ to setup-turtles
     set likelihood likelihood * (1 - new-tax-deterrent-perc)
     set color orange
   ]
-  create-moderate-bettors number-moderate
-  [ set likelihood 0.4
-    set likelihood likelihood * (1 - new-tax-deterrent-perc)
-    set color yellow
-  ]
   create-risk-averse-bettors number-risk-averse
   [ set likelihood 0.2
     set likelihood likelihood * (1 - new-tax-deterrent-perc)
     set color green
-  ]
-  create-pathological-bettors number-pathological
-  [ set likelihood 0.9
-    set likelihood likelihood * (1 - new-tax-deterrent-perc)
-    set color red
   ]
 
   ;; general turtle setup
@@ -187,6 +166,7 @@ to set-initial-turtle-vars
   set salary random-normal average-salary (average-salary / 0.3) ;;number based on average salary in kenya. Mean at average-salary and std dev 0.3
   set money salary
   set heard-of-bet False
+  set bankrupt False
 end
 
 ;; tell center patch about betting(advertise here)
@@ -230,14 +210,8 @@ to go
   ask problem-bettors[
     bet-problem
   ]
-  ask moderate-bettors [
-    bet-moderate
-  ]
   ask risk-averse-bettors [
     bet-risk-averse
-  ]
-  ask pathological-bettors[
-    bet-pathological
   ]
 
 
@@ -365,109 +339,97 @@ to generate-odds
   set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
 end
 
-;; problem-bettors
-to bet-problem
-  if heard-of-bet = False
-  [ stop ]
-
-  if (likelihood * 100 >  random(100)) and (money > 0) ;; so if likelihood * 100 gives me a number larger than the random chance in 1-100 then bet.
-  [
-   let curr-bet money-to-bet money
-   set number-of-bets-made number-of-bets-made + 1
-   ; see if agent wins
-    ifelse winning-outcome = 1
-   [ set money money + betting-odds * curr-bet
-     set success success + 1
-     set company-wins (company-wins - betting-odds * curr-bet)
-   ]
-   [ set money money - curr-bet
-     set company-wins company-wins + curr-bet
-     set success success - 1
-   ]
-
-  ]
-end
-
-;; moderate-bettors
-to bet-moderate
-  if heard-of-bet = False
-  [ stop ]
-
-  if (likelihood * 100 >  random(100)) and (money > 0)
-  [
-   let curr-bet money-to-bet money
-   set number-of-bets-made number-of-bets-made + 1
-   ; see if agent wins and remove money from company winnings
-   ifelse winning-outcome = 1
-   [ set money (money + betting-odds * curr-bet)
-     set success success + 1
-     set company-wins (company-wins - betting-odds * curr-bet)
-   ]
-   [ set money money - curr-bet
-     set company-wins company-wins + curr-bet
-     set success success - 1
-   ]
-  ]
-end
-
-;; risk-averse-bettors
+;;
 to bet-risk-averse
-  if heard-of-bet = False
-  [ stop ]
 
-  if (likelihood * 100 >  random(100)) and (money > 0)
+  if (heard-of-bet) and (not bankrupt)
   [
-   let curr-bet money-to-bet money
-   set number-of-bets-made number-of-bets-made + 1
-   ; see if agent wins
-   ifelse winning-outcome = 1
-   [ set money money + betting-odds * curr-bet
-     set success success + 1
-     set company-wins (company-wins - betting-odds * curr-bet)
-   ]
-   [ set money money - curr-bet
-     set company-wins company-wins + curr-bet
-     set success success - 1
-   ]
-    set number-of-bets-made number-of-bets-made + 1
+    let curr-bet money-to-bet money
+
+    ;;utility function for bet pathological
+    ;;check the odds
+    ;;set p = 0.2
+    ;print(word "---------------")
+    ;print(word "odds: " betting-odds)
+    ;print(word "sentiment: " sentiment)
+    let utility-func (0.7 * (betting-odds ) * curr-bet + curr-bet) - sentiment
+    ;print(word "utility: " utility-func)
+    let p-winning (1 / (betting-odds + 1))
+    ;print(word "p-winning: " p-winning)
+    ;print(word "curr-bet: " curr-bet)
+
+    let expected-payoff ((betting-odds * curr-bet) - (1 - p-winning) * curr-bet)
+    ;print(word "expected: " expected-payoff)
+
+
+
+    ;;comment to fix later likelihood * 100 >  random(100)
+
+    if (expected-payoff > utility-func)
+    [
+      set number-of-bets-made number-of-bets-made + 1
+      ; see if agent wins
+      ifelse winning-outcome = 1
+      [ set money money + betting-odds * curr-bet
+        set success success + 1
+        set company-wins (company-wins - betting-odds * curr-bet)
+      ]
+      [ set money money - curr-bet
+        set company-wins company-wins + curr-bet
+        set success success - 1
+      ]
+    ]
+    if money <= 0
+    [ set bankrupt True]
   ]
 end
 
-;; pathological-bettors
-to bet-pathological
-  if heard-of-bet = False
-  [ stop ]
 
-
-  let curr-bet money-to-bet money
-
-  ;;utility function for bet pathological
-  ;;check the odds
-  ;;set p = 0.2
-  print(word "odds" betting-odds)
-  let utility-func (0.2 * (betting-odds ) * curr-bet + curr-bet)
-  print(word "utility" utility-func)
-  let p-winning (1 / (betting-odds + 1))
-  let expected-payoff (p-winning * (betting-odds) * curr-bet) - ((1 - p-winning) * curr-bet)
-  print(word "expected" expected-payoff)
-
-  ;;comment to fix later likelihood * 100 >  random(100)
-
-  if (likelihood * 100 >  random(100)) and (money > 0)
+;;
+to bet-problem
+  if (heard-of-bet) and (not bankrupt)
   [
+    let curr-bet money-to-bet money
 
-   set number-of-bets-made number-of-bets-made + 1
-   ; see if he wins
-   ifelse winning-outcome = 1
-   [ set money money + betting-odds * curr-bet
-     set success success + 1
-     set company-wins (company-wins - betting-odds * curr-bet)
-   ]
-   [ set money money - curr-bet
-     set company-wins company-wins + curr-bet
-     set success success - 1
-   ]
+    ;;utility function for bet pathological
+    ;;check the odds
+    ;;set p = 0.2
+    ;print(word "---------------")
+    ;print(word "odds: " betting-odds)
+    ;print(word "sentiment: " sentiment)
+    let utility-func (0.2 * (betting-odds ) * curr-bet + curr-bet) - sentiment
+    ;print(word "utility: " utility-func)
+    let p-winning (1 / (betting-odds + 1))
+    ;print(word "p-winning: " p-winning)
+    ;print(word "curr-bet: " curr-bet)
+
+    let expected-payoff ((betting-odds * curr-bet) - (1 - p-winning) * curr-bet)
+    ;print(word "expected: " expected-payoff)
+
+
+
+    ;;comment to fix later likelihood * 100 >  random(100)
+
+    if (expected-payoff > utility-func)
+    [
+
+      set number-of-bets-made number-of-bets-made + 1
+      ; see if he wins
+      ifelse winning-outcome = 1
+      [ set money money + betting-odds * curr-bet
+        set success success + 1
+        set company-wins (company-wins - betting-odds * curr-bet)
+      ]
+      [ set money money - curr-bet
+        set company-wins company-wins + curr-bet
+        set success success - 1
+      ]
+    ]
+
+    if money <= 0
+    [ set bankrupt True]
   ]
+
 end
 
 ;; MOVE TURTLES
@@ -535,9 +497,7 @@ end
 
 ;; smooth the output of average money based on last 5 average money of bettors
 to update-smoothing-graph
-  set average-pathological (help-smooth average-pathological smoothing-amount pathological-bettors)
   set average-problem (help-smooth average-problem smoothing-amount problem-bettors)
-  set average-moderate (help-smooth average-moderate smoothing-amount moderate-bettors)
   set average-risk-averse (help-smooth average-risk-averse smoothing-amount risk-averse-bettors)
 
 end
@@ -635,28 +595,6 @@ HORIZONTAL
 
 MONITOR
 333
-204
-425
-249
-Pathological
-count pathological-bettors
-17
-1
-11
-
-MONITOR
-334
-264
-408
-309
-Moderate
-count moderate-bettors
-17
-1
-11
-
-MONITOR
-333
 315
 453
 360
@@ -704,8 +642,6 @@ true
 true
 "" ""
 PENS
-"pathological" 1.0 0 -8053223 true "" "plot mean average-pathological"
-"moderate" 1.0 0 -1184463 true "" "plot mean average-moderate"
 "problem" 1.0 0 -817084 true "" "plot mean average-problem"
 "risk-averse" 1.0 0 -13840069 true "" "plot mean average-risk-averse"
 
@@ -737,7 +673,7 @@ MONITOR
 477
 190
 Number of Bankrupt
-numberBankrupt
+count turtles with [bankrupt = True]
 17
 1
 11
@@ -751,7 +687,7 @@ average-salary
 average-salary
 5000
 30000
-5000.0
+16624.0
 1
 1
 NIL
@@ -864,21 +800,6 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot company-wins"
 
 SLIDER
-733
-65
-939
-98
-percent-pathological
-percent-pathological
-0
-100
-17.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
 732
 109
 909
@@ -887,22 +808,7 @@ percent-problem
 percent-problem
 0
 100
-10.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-730
-156
-923
-189
-percent-moderate
-percent-moderate
-0
-100
-36.0
+46.0
 1
 1
 NIL
@@ -917,7 +823,7 @@ percent-risk-averse
 percent-risk-averse
 0
 100
-37.0
+54.0
 1
 1
 NIL
@@ -929,7 +835,7 @@ MONITOR
 1140
 124
 sum of percentages
-sum (list percent-pathological percent-problem percent-moderate percent-risk-averse)
+sum (list percent-problem percent-risk-averse)
 17
 1
 11
@@ -943,7 +849,7 @@ smoothing-amount
 smoothing-amount
 1
 50
-15.0
+1.0
 1
 1
 NIL
