@@ -16,19 +16,14 @@
 ;;For problem, assign utility curve that is risk seeking
 ;;
 
-
-
-
-
-
 ;;
 ;; TURTLE VARIABLES
 ;;
 
 turtles-own[
   money ;; money that turtle has at one point
-  sentiment ;; TODO: use this variable, what is the agents sentiment towards betting (influenced by social factors)
-  success ;; TODO: use this variable, how successful the agent currently is in bets
+  sentiment ;; agents sentiment towards betting (influenced by social factors)
+  success ;; how successful the agent currently is in bets
   agentcolor ;; give agents a color variable
   heard-of-bet ;; did the agent hear that betting existss
   salary ;; monthly salary
@@ -48,16 +43,16 @@ breed [problem-bettors problem-one]
 breed [risk-averse-bettors risk-averse-one]
 
 
-problem-bettors-own [ likelihood ]
-risk-averse-bettors-own [ likelihood ]
+problem-bettors-own [ p-value ]
+risk-averse-bettors-own [ p-value ]
 
 ;;
 ;; PATCH VARIABLES
 ;;
 
 patches-own[
-  times-bet-advertised  ;; TODO: we're tracking this, but not using it atm.
-  neighborhood ;; TODO: use this variable, vision radius of the patch
+  times-bet-advertised  ;;
+  neighborhood ;;
   delay-ticks ;; use this variable to have the patches change color for some ticks (can add to interface...)
 ]
 
@@ -73,9 +68,11 @@ globals[
   number-of-bets-made
   sum-percentages ;;
   winning-outcome ;;
-
   average-problem
   average-risk-averse
+
+  total-profit
+
 
 ]
 
@@ -93,14 +90,13 @@ to setup
   ifelse seed-randomly? = True
   [ seed-random ]
   [ seed-one ]
-
   update-smoothing-graph
 end
 
 ;;This procedure checks if the user specified percentages sum to 100 to get valid results
 to check-percentages
   if sum-percentages != 100[
-    user-message (word "The sum of percentages is not 100. Adjust accordingly")
+    user-message (word "The sum of percentages is not 100. Adjust accordingly.")
     stop
   ]
 end
@@ -118,6 +114,19 @@ to setup-globals
   set sum-percentages sum (list percent-problem percent-risk-averse)
   set average-problem []
   set average-risk-averse []
+
+  if literature-values?
+  [
+    set average-salary 24631 ;; https://www.averagesalarysurvey.com/kenya
+    set affect-of-sentiment 20.1 ;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4718651/
+    set social-influence 64 ;; (Donati et al., 2013).
+    set percent-problem 11.5  ;; https://nairobinews.nation.co.ke/life/kenya-highest-number-betting-youth-africa-survey/
+    set percent-risk-averse 88.5
+    set gamblers-perc 60.5
+    set tax-deterrent-perc 20
+  ]
+
+  set total-profit 0
 end
 
 
@@ -125,6 +134,7 @@ to setup-turtles
   set-default-shape turtles "person"
   set num-bettors round(num-people * (gamblers-perc * 0.01))
   let new-tax-deterrent-perc tax-deterrent-perc * 0.01 ;; setting tax-deterrent-perc changes ui
+
 
   ; number of people that don't bet is number of gamblers minus number of people that bet
   let number-non-bet num-people - num-bettors
@@ -140,19 +150,19 @@ to setup-turtles
   ]
 
   create-problem-bettors number-problem
-  [ set likelihood 0.7
-    set likelihood likelihood * (1 - new-tax-deterrent-perc)
+  [ set p-value 0.7
+    set p-value p-value * (1 - new-tax-deterrent-perc)
     set color orange
   ]
   create-risk-averse-bettors number-risk-averse
-  [ set likelihood 0.2
-    set likelihood likelihood * (1 - new-tax-deterrent-perc)
+  [ set p-value 0.2
+    set p-value p-value * (1 - new-tax-deterrent-perc)
     set color green
   ]
 
   ;; general turtle setup
   ask turtles
-  [ move-to one-of patches
+  [   move-to one-of patches
       set size 1.5 ;; easier to see
       set-initial-turtle-vars
   ]
@@ -163,7 +173,7 @@ to set-initial-turtle-vars
   set success 0 ;; begin with a success rate of 0
   set sentiment 0.5 ;; neutral sentiment to start from
   set times-bet-advertised 0 ;; they haven't been advertised to yet
-  set salary random-normal average-salary (average-salary / 0.3) ;;number based on average salary in kenya. Mean at average-salary and std dev 0.3
+  set salary random-normal (average-salary * (1 / 12)) (average-salary * (1 / 12) / 0.3) ;;number based on average salary in kenya. Mean at average-salary and std dev 0.3
   set money salary
   set heard-of-bet False
   set bankrupt False
@@ -197,7 +207,7 @@ to go
 
   ask turtles [
     move-turtles
-    ;; TODO: Do something when a turtle hears a bet. Make it check to see if patch was advertised to...
+    ;;
     spread-bet ;; will spread the bet AND INFLUENCE of the person that says it to neighbors
     show-faces-for-money
   ]
@@ -206,18 +216,20 @@ to go
   generate-odds
   set winning-outcome seeIfWon betting-odds
 
-  ;; turtles should bet each week(i.e that's when the bets occur)
-  ask problem-bettors[
-    bet-problem
+  ;; turtles should bet (or be allowed to bet) each day and get income every month.
+  ask problem-bettors [
+    if not bankrupt [
+      bet-problem
+      if ticks mod 30 = 0
+      [earn-income]
+    ]
   ]
   ask risk-averse-bettors [
-    bet-risk-averse
-  ]
-
-
-  ask turtles [
-    if ticks mod 30 = 0
-    [earn-income]
+    if not bankrupt [
+      bet-risk-averse
+      if ticks mod 30 = 0
+      [earn-income]
+    ]
   ]
 
   ;; stop model if all users are bankrupt
@@ -236,11 +248,10 @@ end
 ;;
 
 to hear-bet
-
   ;; randomly advertise to advertisement-perc of patches
   if random(100) < advertisement-perc * 0.01
   [
-    set times-bet-advertised times-bet-advertised + 1 ;; TODO: not using this atm
+    set times-bet-advertised times-bet-advertised + 1 ;;
 
     ;; want to implement some sort of ui that shows that a bet was advertised
     if (pcolor != blue) and (pcolor != pink)
@@ -251,7 +262,7 @@ to hear-bet
     ask turtles-here[
       ifelse not heard-of-bet
       [ set heard-of-bet True] ; now the agent knows betting exists
-      [ set sentiment sentiment + 0.1] ; heard of advertisment again. people are likely to only remember 10% of ads they hear about
+      [ set sentiment sentiment + (affect-of-sentiment / 1000)] ; heard of advertisment again. people are likely to only remember 10% of ads they hear about
     ]
   ]
 end
@@ -271,15 +282,15 @@ end
 to show-faces-for-money
   if (([breed] of self) != non-bettors) ;; don't change shape of non-bettors
   [
-    ifelse money > 32000
+    ifelse money > 38000
     [ set shape "face happy"]
     [
-      ifelse (money < 16000) and (money > 0)
+      ifelse (money < 10000) and (money > 0)
       [ set shape "face sad"]
       [
-        ifelse (money <= 5000)
+        ifelse (money <= 0)
         [ set shape "x"
-          set color red ;; (leave color according to groups for now. Can change to make more obvious)]
+          ;set color red ;; (leave color according to groups for now. Can change to make more obvious)]
         ]
         [ set shape "person"]
       ]
@@ -291,10 +302,9 @@ end
 ;;
 ;; method to spread the betting information around the patches' neighborhood.
 ;;
-
 to spread-bet
   let neighbor nobody ; making a neighbor value equal no agent for now
-  set neighbor one-of turtles-on neighbors ;;TODO: is it right to just randomly pick one neighbor?
+  set neighbor one-of turtles-on neighbors ;;
 
   if random(100) < 33 ;; 33% influence by peers on spreading of problem
   [
@@ -309,12 +319,8 @@ to spread-bet
       ]
 
       ask neighbor [
-        ;;TODO: Make this not deterministic. Add social probabilities.
-        ;; want to implement some sort of ui that shows that a bet was advertised
-
-        ;;will implement study done on rate of cocnversion
         set heard-of-bet True ; now the agent knows betting exists
-        set sentiment sentiment + success * 1.64; the success of the one who advertises affect sentiment( need supporting literature)
+        set sentiment sentiment + (success * (1 + (social-influence / 100))) * (affect-of-sentiment / 1000); the success of the one who advertises affect sentiment
       ]
     ]
   ]
@@ -342,40 +348,25 @@ end
 ;;
 to bet-risk-averse
 
-  if (heard-of-bet) and (not bankrupt)
+  if (heard-of-bet)
   [
     let curr-bet money-to-bet money
-
-    ;;utility function for bet pathological
-    ;;check the odds
-    ;;set p = 0.2
-    ;print(word "---------------")
-    ;print(word "odds: " betting-odds)
-    ;print(word "sentiment: " sentiment)
-    let utility-func (0.7 * (betting-odds ) * curr-bet + curr-bet) - sentiment
-    ;print(word "utility: " utility-func)
+    let utility-func (p-value * (betting-odds ) * curr-bet + curr-bet) - sentiment
     let p-winning (1 / (betting-odds + 1))
-    ;print(word "p-winning: " p-winning)
-    ;print(word "curr-bet: " curr-bet)
-
     let expected-payoff ((betting-odds * curr-bet) - (1 - p-winning) * curr-bet)
-    ;print(word "expected: " expected-payoff)
-
-
-
-    ;;comment to fix later likelihood * 100 >  random(100)
-
     if (expected-payoff > utility-func)
     [
       set number-of-bets-made number-of-bets-made + 1
       ; see if agent wins
       ifelse winning-outcome = 1
       [ set money money + betting-odds * curr-bet
+        set total-profit total-profit + betting-odds * curr-bet
         set success success + 1
         set company-wins (company-wins - betting-odds * curr-bet)
       ]
       [ set money money - curr-bet
         set company-wins company-wins + curr-bet
+        set total-profit total-profit - curr-bet
         set success success - 1
       ]
     ]
@@ -384,44 +375,27 @@ to bet-risk-averse
   ]
 end
 
-
 ;;
 to bet-problem
-  if (heard-of-bet) and (not bankrupt)
+  if (heard-of-bet)
   [
     let curr-bet money-to-bet money
-
-    ;;utility function for bet pathological
-    ;;check the odds
-    ;;set p = 0.2
-    ;print(word "---------------")
-    ;print(word "odds: " betting-odds)
-    ;print(word "sentiment: " sentiment)
-    let utility-func (0.2 * (betting-odds ) * curr-bet + curr-bet) - sentiment
-    ;print(word "utility: " utility-func)
+    let utility-func (p-value * (betting-odds ) * curr-bet + curr-bet) - sentiment
     let p-winning (1 / (betting-odds + 1))
-    ;print(word "p-winning: " p-winning)
-    ;print(word "curr-bet: " curr-bet)
-
     let expected-payoff ((betting-odds * curr-bet) - (1 - p-winning) * curr-bet)
-    ;print(word "expected: " expected-payoff)
-
-
-
-    ;;comment to fix later likelihood * 100 >  random(100)
-
     if (expected-payoff > utility-func)
     [
-
       set number-of-bets-made number-of-bets-made + 1
       ; see if he wins
       ifelse winning-outcome = 1
       [ set money money + betting-odds * curr-bet
+        set total-profit total-profit + betting-odds * curr-bet
         set success success + 1
         set company-wins (company-wins - betting-odds * curr-bet)
       ]
       [ set money money - curr-bet
         set company-wins company-wins + curr-bet
+        set total-profit total-profit - curr-bet
         set success success - 1
       ]
     ]
@@ -451,10 +425,9 @@ to move-turtles
 end
 
 ;; reporting success of neighbors,
-;; TODO: Find numbers for this and actually use the function. Currently isn't being used.
 to-report check-neighbor-success
   ; checking influence of neighboring success
-  ifelse sum [success] of turtles-on neighbors > 4
+  ifelse sum [success] of turtles-on neighbors > 0
   [ report True ]
   [ report False ]
 end
@@ -462,38 +435,34 @@ end
 ;; checking to see if everyone is bankrupt and can't bet anymore so terminate model
 to-report all-bankrupt?
   let reportValue False
-
   ask turtles[
     set numberBankrupt count turtles with [money <= 0]
     if numberBankrupt = num-bettors
     [ set reportValue True ]
   ]
-
   report reportValue
 end
 
 to-report money-to-bet [curr-money]
-  let toReport ceiling((((random(13) + 12) / 100) * curr-money) * 0.25)
+  let toReport random-normal ((((random(13) + 12) / 100) * curr-money) * (1 / 30)) abs((((((random(13) + 12) / 100) * curr-money) * (1 / 30)) * 0.5))
   ifelse toReport != 0
   [report toReport];; basically 12-25% of current money.
   [report curr-money]
 end
 
-;;let the agents earn the average income after every 4 ticks i.e. for a month
+;;let the agents earn the average income after 30 ticks, aka a month
 to earn-income
-    set money money + (salary * (1 / 12)) ;; monthly salary
+  if not bankrupt ;; going bankrupt made them lose their job
+  [ set money money + (salary * (1 / 12)) ] ;; monthly salary
 end
 
 to-report help-smooth [arr window-sz curr-breed] ;; smooths the arrays in place according to window size
-
   ifelse length arr < window-sz
   [ set arr lput (mean [money] of curr-breed) arr]
   [ set arr (sublist arr 1 (length arr)) ;; get last 4 values of list
     set arr lput (mean [money] of curr-breed) arr] ;; add latest value to array
   report arr
-
 end
-
 
 ;; smooth the output of average money based on last 5 average money of bettors
 to update-smoothing-graph
@@ -503,13 +472,13 @@ to update-smoothing-graph
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-1208
-10
-1599
-402
+698
+22
+1161
+486
 -1
 -1
-11.61
+13.8
 1
 10
 1
@@ -530,10 +499,10 @@ ticks
 30.0
 
 BUTTON
-92
-142
-165
-175
+91
+129
+164
+162
 setup
 setup
 NIL
@@ -548,9 +517,9 @@ NIL
 
 BUTTON
 16
-140
-79
-173
+129
+81
+162
 go
 go
 T
@@ -572,32 +541,32 @@ num-people
 num-people
 0
 100
-80.0
+43.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-9
-79
-209
-112
+20
+73
+220
+106
 init-advertisements
 init-advertisements
 0
 10
-4.5
+5.6
 0.1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-333
-315
-453
-360
+503
+370
+592
+415
 Problem
 count problem-bettors
 17
@@ -605,10 +574,10 @@ count problem-bettors
 11
 
 MONITOR
-335
-375
-424
-420
+503
+314
+592
+359
 Risk Averse
 count risk-averse-bettors
 17
@@ -622,15 +591,15 @@ SWITCH
 68
 seed-randomly?
 seed-randomly?
-0
+1
 1
 -1000
 
 PLOT
-7
-445
-508
-713
+9
+502
+510
+770
 Money of Bettors on Average
 time
 money
@@ -646,10 +615,10 @@ PENS
 "risk-averse" 1.0 0 -13840069 true "" "plot mean average-risk-averse"
 
 MONITOR
-559
-270
-695
-315
+523
+450
+659
+495
 Company Winnings
 company-wins
 17
@@ -657,10 +626,10 @@ company-wins
 11
 
 MONITOR
-333
-87
-464
-132
+335
+307
+466
+352
 Number of People
 num-people
 17
@@ -668,10 +637,10 @@ num-people
 11
 
 MONITOR
-331
-145
-477
-190
+333
+365
+479
+410
 Number of Bankrupt
 count turtles with [bankrupt = True]
 17
@@ -687,7 +656,7 @@ average-salary
 average-salary
 5000
 30000
-16624.0
+24631.0
 1
 1
 NIL
@@ -702,32 +671,32 @@ tax-deterrent-perc
 tax-deterrent-perc
 0
 100
-20.0
+57.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-12
-337
-184
-370
+504
+176
+676
+209
 gamblers-perc
 gamblers-perc
 0
 100
-45.0
+60.5
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-562
-88
-643
-133
+601
+314
+682
+359
 # of bettors
 num-bettors
 17
@@ -735,25 +704,25 @@ num-bettors
 11
 
 SLIDER
-12
-378
-184
-411
+17
+381
+189
+414
 advertisement-perc
 advertisement-perc
 0
 100
-30.0
+52.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-560
-212
-643
-257
+220
+317
+303
+362
 # bets made
 number-of-bets-made
 17
@@ -761,10 +730,10 @@ number-of-bets-made
 11
 
 MONITOR
-562
-153
-657
-198
+221
+371
+316
+416
 # heard of bet
 count turtles with [heard-of-bet = True]
 17
@@ -772,20 +741,20 @@ count turtles with [heard-of-bet = True]
 11
 
 TEXTBOX
-353
-23
-641
-71
+393
+30
+681
+78
 Reports and Graph Area
 20
 0.0
 0
 
 PLOT
-547
-448
-887
-712
+521
+505
+861
+769
 Company winnings over time
 time
 Winnings
@@ -800,40 +769,40 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot company-wins"
 
 SLIDER
-732
-109
-909
-142
+504
+218
+681
+251
 percent-problem
 percent-problem
 0
 100
-46.0
+11.5
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-723
-203
-919
-236
+502
+258
+698
+291
 percent-risk-averse
 percent-risk-averse
 0
 100
-54.0
+88.5
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-994
-79
-1140
-124
+504
+126
+650
+171
 sum of percentages
 sum (list percent-problem percent-risk-averse)
 17
@@ -841,15 +810,89 @@ sum (list percent-problem percent-risk-averse)
 11
 
 SLIDER
-80
-723
-273
-756
+82
+780
+275
+813
 smoothing-amount
 smoothing-amount
 1
 50
-1.0
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+198
+32
+350
+65
+literature-values?
+literature-values?
+0
+1
+-1000
+
+MONITOR
+59
+448
+214
+493
+Total Sentiment of People
+sum [sentiment] of turtles
+17
+1
+11
+
+MONITOR
+224
+448
+368
+493
+Total Success of People
+sum [success] of turtles
+17
+1
+11
+
+MONITOR
+371
+447
+511
+492
+Total Profit
+total-profit
+17
+1
+11
+
+SLIDER
+12
+180
+196
+213
+affect-of-sentiment
+affect-of-sentiment
+1
+100
+20.1
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+16
+338
+188
+371
+social-influence
+social-influence
+0
+100
+64.0
 1
 1
 NIL
