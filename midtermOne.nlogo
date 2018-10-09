@@ -1,20 +1,8 @@
-;;Notes
-;; average bet price is $50
-;; average proportion of monthly salary gambled 12%
-;; do we update salary after certain ticks or no?(I think we should ~Shadrack)
-;; generate betting draws each time
-;; population has fixed distribution of people who bet
-;; randomly scatter these people in the patches, might end up with patches with no gamblers
-;; possibly include way using interaction to choose where to start betting firm( use mouse to click on grid or randomly place one)
-
-;;Other Variables that can be used are on the DOC (Maybe first code something then implement probability)
-
-;;additional information:
+;;Information:
 ;;when presented with a bet, the 3 types of gamblers will have different utility functions
 ;;For risk averse, we will assign a likelihood that will give resemble the utility curve of a risk averse gambler
 ;;For moderate, gamblers we can randomly distribute utility curves(some a bit risk averse, some problem)
 ;;For problem, assign utility curve that is risk seeking
-;;
 
 ;;
 ;; TURTLE VARIABLES
@@ -29,14 +17,6 @@ turtles-own[
   salary ;; monthly salary
   bankrupt ;; if you are bankrupt
 ]
-
-;; Problem Gamblers, Moderate-Risk Gamblers, Pathological Gamblers, and Gambler Averse
-;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4500885/
-;;1) non-problem gamblers (score of 0);
-;;2) risk-averse gamblers
-;;3) moderate-risk gamblers
-;;4) problem gamblers
-;;5) pathological
 
 breed [non-bettors non-bettor-one]
 breed [problem-bettors problem-one]
@@ -120,7 +100,7 @@ to setup-globals
     set average-salary 24631 ;; https://www.averagesalarysurvey.com/kenya
     set affect-of-sentiment 20.1 ;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4718651/
     set social-influence 64 ;; (Donati et al., 2013).
-    set percent-problem 6.1  ;; https://nairobinews.nation.co.ke/life/kenya-highest-number-betting-youth-africa-survey/
+    set percent-problem 6.1
     set percent-risk-averse 93.9
     set gamblers-perc 60.5
     set tax-deterrent-perc 20
@@ -239,6 +219,7 @@ to go
     stop
   ]
 
+  ;; to use if you want to update the graphs to be more smooth
   update-smoothing-graph
   tick
 end
@@ -247,6 +228,7 @@ end
 ;; PATCH METHODS
 ;;
 
+;; function that lets patches hear the bet and displays the blue color
 to hear-bet
   ;; randomly advertise to advertisement-perc of patches
   if random(100) < advertisement-perc * 0.01
@@ -345,7 +327,7 @@ to generate-odds
   set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
 end
 
-;;
+;; the function that risk-averse-bettors use to bet
 to bet-risk-averse
 
   if (heard-of-bet)
@@ -375,7 +357,7 @@ to bet-risk-averse
   ]
 end
 
-;;
+;; the function that problem-bettors use to bet
 to bet-problem
   if (heard-of-bet)
   [
@@ -443,6 +425,7 @@ to-report all-bankrupt?
   report reportValue
 end
 
+;; reports the money that a person will currently be willing to bet
 to-report money-to-bet [curr-money]
   let toReport random-normal ((((random(13) + 12) / 100) * curr-money) * (1 / 30)) abs((((((random(13) + 12) / 100) * curr-money) * (1 / 30)) * 0.5))
   ifelse toReport != 0
@@ -456,6 +439,8 @@ to earn-income
   [ set money money + (salary * (1 / 12)) ] ;; monthly salary
 end
 
+
+;;helper function for the smoothing function
 to-report help-smooth [arr window-sz curr-breed] ;; smooths the arrays in place according to window size
   ifelse length arr < window-sz
   [ set arr lput (mean [money] of curr-breed) arr]
@@ -464,7 +449,7 @@ to-report help-smooth [arr window-sz curr-breed] ;; smooths the arrays in place 
   report arr
 end
 
-;; smooth the output of average money based on last 5 average money of bettors
+;; smooth the output of average money based on last "window-size" average money of bettors
 to update-smoothing-graph
   set average-problem (help-smooth average-problem smoothing-amount problem-bettors)
   set average-risk-averse (help-smooth average-risk-averse smoothing-amount risk-averse-bettors)
