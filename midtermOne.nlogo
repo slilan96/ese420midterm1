@@ -120,8 +120,8 @@ to setup-globals
     set average-salary 24631 ;; https://www.averagesalarysurvey.com/kenya
     set affect-of-sentiment 20.1 ;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4718651/
     set social-influence 64 ;; (Donati et al., 2013).
-    set percent-problem 11.5  ;; https://nairobinews.nation.co.ke/life/kenya-highest-number-betting-youth-africa-survey/
-    set percent-risk-averse 88.5
+    set percent-problem 6.1  ;; https://nairobinews.nation.co.ke/life/kenya-highest-number-betting-youth-africa-survey/
+    set percent-risk-averse 93.9
     set gamblers-perc 60.5
     set tax-deterrent-perc 20
   ]
