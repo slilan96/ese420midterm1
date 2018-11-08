@@ -16,6 +16,17 @@ turtles-own[
   heard-of-bet ;; did the agent hear that betting existss
   salary ;; monthly salary
   bankrupt ;; if you are bankrupt
+
+  ;;M2: agent specific values further
+  agent-friend-influence
+  agent-affect-of-advertisement
+  agent-winning-losing-influence
+  agent-taxation-influence
+  agent-principle
+  agent-shame-decay
+  agent-shame
+
+
 ]
 
 breed [non-bettors non-bettor-one]
@@ -51,9 +62,10 @@ globals[
   average-problem
   average-risk-averse
 
+  average-problem-shame
+  average-risk-averse-shame
+
   total-profit
-
-
 ]
 
 ;;;
@@ -71,6 +83,7 @@ to setup
   [ seed-random ]
   [ seed-one ]
   update-smoothing-graph
+  update-smoothing-graph-shame
 end
 
 ;;This procedure checks if the user specified percentages sum to 100 to get valid results
@@ -94,17 +107,21 @@ to setup-globals
   set sum-percentages sum (list percent-problem percent-risk-averse)
   set average-problem []
   set average-risk-averse []
+  set average-problem-shame []
+  set average-risk-averse-shame []
 
   if literature-values?
   [
     set average-salary 24631 ;; https://www.averagesalarysurvey.com/kenya
-    set affect-of-sentiment 20.1 ;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4718651/
+    set affect-of-advertisement 20.1 ;; https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4718651/
     set social-influence 64 ;; (Donati et al., 2013).
     set percent-problem 6.1
     set percent-risk-averse 93.9
     set gamblers-perc 60.5
     set tax-deterrent-perc 20
   ]
+
+
 
   set total-profit 0
 end
@@ -127,17 +144,77 @@ to setup-turtles
   create-non-bettors number-non-bet
   [ set color magenta
     set shape "turtle" ;; indestructible turtle? ~ love it!
+
+    ;;M2: update these values based on survey (agent-specific)...Nonbettors will not influence weights
+    if survey-values?
+    [
+      set agent-friend-influence 1
+      set agent-affect-of-advertisement 1
+      set agent-winning-losing-influence 1 ;; average of friend winning vs losing influence
+      set agent-taxation-influence 1;; high tax + low tax average weight
+      set agent-principle 1
+      set agent-shame-decay 1
+      set agent-shame 0
+    ]
   ]
 
   create-problem-bettors number-problem
   [ set p-value 0.7
-    set p-value p-value * (1 - new-tax-deterrent-perc)
+
     set color orange
+
+    ;;M2: update these values based on survey (agent-specific)
+    ifelse survey-values?
+    [
+      set agent-friend-influence 0.8
+      set agent-affect-of-advertisement 0.7
+      set agent-winning-losing-influence (0.70 - 0.53) / 2 ;; average of friend winning vs losing influence
+      set agent-taxation-influence (0.83 + 0.44) / 2 ;; high tax + low tax average weight
+      set agent-principle 0.57
+      set agent-shame-decay 0.34
+      set agent-shame 0
+    ]
+    [
+      ;; survey values wasn't ticked, don't influence with weights (all are left as 1)
+      set agent-friend-influence 1
+      set agent-affect-of-advertisement 1
+      set agent-winning-losing-influence 1 ;; average of friend winning vs losing influence
+      set agent-taxation-influence 1;; high tax + low tax average weight
+      set agent-principle 1
+      set agent-shame-decay 1
+      set agent-shame 0
+    ]
+
+    set p-value p-value * (1 - new-tax-deterrent-perc * agent-taxation-influence)
   ]
   create-risk-averse-bettors number-risk-averse
   [ set p-value 0.2
-    set p-value p-value * (1 - new-tax-deterrent-perc)
+
     set color green
+
+    ;;M2: update these values based on survey (agent-specific)
+    ifelse survey-values?
+    [
+      set agent-friend-influence 0.43
+      set agent-affect-of-advertisement 0.39
+      set agent-winning-losing-influence (0.63 - 0.46) / 2 ;; average of friend winning vs losing influence
+      set agent-taxation-influence (0.61 + 0.54) / 2 ;; high tax + low tax average weight
+      set agent-principle 0.8
+      set agent-shame-decay 0.23
+      set agent-shame 0
+    ]
+    [
+      ;; survey values wasn't ticked, don't influence with weights (all are left as 1)
+      set agent-friend-influence 1
+      set agent-affect-of-advertisement 1
+      set agent-winning-losing-influence 1 ;; average of friend winning vs losing influence
+      set agent-taxation-influence 1;; high tax + low tax average weight
+      set agent-principle 1
+      set agent-shame-decay 1
+      set agent-shame 0
+    ]
+
+    set p-value p-value * (1 - new-tax-deterrent-perc * agent-taxation-influence)
   ]
 
   ;; general turtle setup
@@ -202,6 +279,7 @@ to go
       bet-problem
       if ticks mod 30 = 0
       [earn-income]
+      decay-shame ;; decay shame every tick
     ]
   ]
   ask risk-averse-bettors [
@@ -209,6 +287,7 @@ to go
       bet-risk-averse
       if ticks mod 30 = 0
       [earn-income]
+      decay-shame ;; decay shame every tick
     ]
   ]
 
@@ -221,6 +300,7 @@ to go
 
   ;; to use if you want to update the graphs to be more smooth
   update-smoothing-graph
+  update-smoothing-graph-shame
   tick
 end
 
@@ -244,7 +324,7 @@ to hear-bet
     ask turtles-here[
       ifelse not heard-of-bet
       [ set heard-of-bet True] ; now the agent knows betting exists
-      [ set sentiment sentiment + (affect-of-sentiment / 1000)] ; heard of advertisment again. people are likely to only remember 10% of ads they hear about
+      [ set sentiment sentiment + (affect-of-advertisement * agent-affect-of-advertisement / 1000)] ; heard of advertisment again. people are likely to only remember 10% of ads they hear about
     ]
   ]
 end
@@ -288,7 +368,7 @@ to spread-bet
   let neighbor nobody ; making a neighbor value equal no agent for now
   set neighbor one-of turtles-on neighbors ;;
 
-  if random(100) < 33 ;; 33% influence by peers on spreading of problem
+  if random(100) < 33 * agent-friend-influence ;; 33% influence by peers on spreading of problem
   [
     if (neighbor != nobody) and ([breed] of self != non-bettors)
     ;; want to implement some sort of ui that shows that a bet was advertised
@@ -302,7 +382,7 @@ to spread-bet
 
       ask neighbor [
         set heard-of-bet True ; now the agent knows betting exists
-        set sentiment sentiment + (success * (1 + (social-influence / 100))) * (affect-of-sentiment / 1000); the success of the one who advertises affect sentiment
+        set sentiment sentiment + (success * (1 + (social-influence * agent-winning-losing-influence / 100))) * (affect-of-advertisement * agent-affect-of-advertisement / 1000); the success of the one who advertises affect sentiment
       ]
     ]
   ]
@@ -327,16 +407,22 @@ to generate-odds
   set betting-odds random(max-extreme - min-extreme) + min-extreme ; a random between [min_extreme, max_extreme-1]
 end
 
+;; decay agent's shame every time step
+to decay-shame
+  set agent-shame (agent-shame - agent-shame-decay * agent-shame) ;; decay the shame based on agents shame decay rate
+end
+
+
 ;; the function that risk-averse-bettors use to bet
 to bet-risk-averse
 
   if (heard-of-bet)
   [
     let curr-bet money-to-bet money
-    let utility-func (p-value * (betting-odds ) * curr-bet + curr-bet) - sentiment
+    let utility-func (p-value * (betting-odds ) * curr-bet + curr-bet) * (1 + agent-shame) - sentiment
     let p-winning (1 / (betting-odds + 1))
     let expected-payoff ((betting-odds * curr-bet) - (1 - p-winning) * curr-bet)
-    if (expected-payoff > utility-func)
+    ifelse (expected-payoff > utility-func)
     [
       set number-of-bets-made number-of-bets-made + 1
       ; see if agent wins
@@ -352,6 +438,38 @@ to bet-risk-averse
         set success success - 1
       ]
     ]
+    [
+      ;; M2: expected payout is not greater than the utility function. But agent has a chance of being
+      ;; reckless and still betting anyways, thus gaining shame.
+
+      ;; Depending on how principled you are, you are less likely to fall into irrational behavior and
+      ;; recklessly bet.
+
+     if (random 100 > (agent-principle * 100))
+     [
+       ;; recklessly bet despite utility function
+       set agent-shame agent-shame + 0.1
+       ;; go through with bet
+       set number-of-bets-made number-of-bets-made + 1
+       ; see if agent wins
+       ifelse winning-outcome = 1
+       [ set money money + betting-odds * curr-bet
+         set total-profit total-profit + betting-odds * curr-bet
+         set success success + 1
+         set company-wins (company-wins - betting-odds * curr-bet)
+       ]
+       [ set money money - curr-bet
+         set company-wins company-wins + curr-bet
+         set total-profit total-profit - curr-bet
+         set success success - 1
+       ]
+     ]
+
+
+
+    ]
+
+
     if money <= 0
     [ set bankrupt True]
   ]
@@ -362,10 +480,10 @@ to bet-problem
   if (heard-of-bet)
   [
     let curr-bet money-to-bet money
-    let utility-func (p-value * (betting-odds ) * curr-bet + curr-bet) - sentiment
+    let utility-func (p-value * (betting-odds ) * curr-bet + curr-bet) * (1 + agent-shame) - sentiment
     let p-winning (1 / (betting-odds + 1))
     let expected-payoff ((betting-odds * curr-bet) - (1 - p-winning) * curr-bet)
-    if (expected-payoff > utility-func)
+    ifelse (expected-payoff > utility-func)
     [
       set number-of-bets-made number-of-bets-made + 1
       ; see if he wins
@@ -381,7 +499,33 @@ to bet-problem
         set success success - 1
       ]
     ]
+    [
+      ;; M2: expected payout is not greater than the utility function. But agent has a chance of being
+      ;; reckless and still betting anyways, thus gaining shame.
 
+      ;; Depending on how principled you are, you are less likely to fall into irrational behavior and
+      ;; recklessly bet.
+
+     if (random 100 > (agent-principle * 100))
+     [
+       ;; recklessly bet despite utility function
+       set agent-shame agent-shame + 0.1
+       ;; go through with bet
+       set number-of-bets-made number-of-bets-made + 1
+       ; see if agent wins
+       ifelse winning-outcome = 1
+       [ set money money + betting-odds * curr-bet
+         set total-profit total-profit + betting-odds * curr-bet
+         set success success + 1
+         set company-wins (company-wins - betting-odds * curr-bet)
+       ]
+       [ set money money - curr-bet
+         set company-wins company-wins + curr-bet
+         set total-profit total-profit - curr-bet
+         set success success - 1
+       ]
+     ]
+    ]
     if money <= 0
     [ set bankrupt True]
   ]
@@ -453,6 +597,22 @@ end
 to update-smoothing-graph
   set average-problem (help-smooth average-problem smoothing-amount problem-bettors)
   set average-risk-averse (help-smooth average-risk-averse smoothing-amount risk-averse-bettors)
+
+end
+
+;;helper function for the smoothing function
+to-report help-smooth-shame [arr window-sz curr-breed] ;; smooths the arrays in place according to window size
+  ifelse length arr < window-sz
+  [ set arr lput (mean [agent-shame] of curr-breed) arr]
+  [ set arr (sublist arr 1 (length arr)) ;; get last 4 values of list
+    set arr lput (mean [agent-shame] of curr-breed) arr] ;; add latest value to array
+  report arr
+end
+
+;; smooth the output of average money based on last "window-size" average money of bettors
+to update-smoothing-graph-shame
+  set average-problem-shame (help-smooth-shame average-problem-shame 1 problem-bettors)
+  set average-risk-averse-shame (help-smooth-shame average-risk-averse-shame 1 risk-averse-bettors)
 
 end
 @#$#@#$#@
@@ -533,10 +693,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-20
-73
-220
-106
+15
+77
+192
+110
 init-advertisements
 init-advertisements
 0
@@ -656,22 +816,22 @@ tax-deterrent-perc
 tax-deterrent-perc
 0
 100
-57.0
+20.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-504
-176
-676
-209
+389
+114
+561
+147
 gamblers-perc
 gamblers-perc
 0
 100
-60.5
+60.0
 1
 1
 NIL
@@ -754,40 +914,40 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot company-wins"
 
 SLIDER
-504
-218
-681
-251
+389
+156
+566
+189
 percent-problem
 percent-problem
 0
 100
-11.5
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-502
-258
-698
-291
+387
+196
+583
+229
 percent-risk-averse
 percent-risk-averse
 0
 100
-88.5
+90.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-504
-126
-650
-171
+389
+64
+535
+109
 sum of percentages
 sum (list percent-problem percent-risk-averse)
 17
@@ -803,7 +963,7 @@ smoothing-amount
 smoothing-amount
 1
 50
-5.0
+1.0
 1
 1
 NIL
@@ -812,11 +972,11 @@ HORIZONTAL
 SWITCH
 198
 32
-350
+361
 65
 literature-values?
 literature-values?
-0
+1
 1
 -1000
 
@@ -856,13 +1016,13 @@ total-profit
 SLIDER
 12
 180
-196
+237
 213
-affect-of-sentiment
-affect-of-sentiment
+affect-of-advertisement
+affect-of-advertisement
 1
 100
-20.1
+45.0
 1
 1
 NIL
@@ -877,11 +1037,41 @@ social-influence
 social-influence
 0
 100
-64.0
+78.0
 1
 1
 NIL
 HORIZONTAL
+
+SWITCH
+204
+79
+365
+112
+survey-values?
+survey-values?
+0
+1
+-1000
+
+PLOT
+1199
+26
+1679
+336
+Agent Shame Graph
+NIL
+NIL
+-10.0
+10.0
+-0.2
+0.5
+true
+true
+"" ""
+PENS
+"problem shame" 1.0 0 -5298144 true "" "plot mean [agent-shame] of problem-bettors"
+"risk-averse shame" 1.0 0 -11085214 true "" "plot mean [agent-shame] of risk-averse-bettors"
 
 @#$#@#$#@
 ## WHAT IS IT?
