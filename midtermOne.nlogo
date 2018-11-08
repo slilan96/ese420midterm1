@@ -139,7 +139,6 @@ to setup-turtles
   let number-problem floor(percent-problem * 0.01 * num-bettors)
   ; rest is risk averse
   let number-risk-averse num-bettors - number-problem
-
   ;; temp values, (problem = 0.7, moderate = 0.4, risk-averse = 0.2, pathological=0.9) likelihood for taking the odds
   create-non-bettors number-non-bet
   [ set color magenta
@@ -176,12 +175,12 @@ to setup-turtles
     ]
     [
       ;; survey values wasn't ticked, don't influence with weights (all are left as 1)
-      set agent-friend-influence 1
-      set agent-affect-of-advertisement 1
-      set agent-winning-losing-influence 1 ;; average of friend winning vs losing influence
-      set agent-taxation-influence 1;; high tax + low tax average weight
-      set agent-principle 1
-      set agent-shame-decay 1
+      set agent-friend-influence p-agent-friend-influence / 100
+      set agent-affect-of-advertisement p-agent-affect-of-advertisement / 100
+      set agent-winning-losing-influence p-agent-winning-losing-influence / 100  ;; average of friend winning vs losing influence
+      set agent-taxation-influence p-agent-taxation-influence / 100 ;; high tax + low tax average weight
+      set agent-principle p-agent-principle / 100
+      set agent-shame-decay p-agent-shame-decay / 100
       set agent-shame 0
     ]
 
@@ -205,12 +204,12 @@ to setup-turtles
     ]
     [
       ;; survey values wasn't ticked, don't influence with weights (all are left as 1)
-      set agent-friend-influence 1
-      set agent-affect-of-advertisement 1
-      set agent-winning-losing-influence 1 ;; average of friend winning vs losing influence
-      set agent-taxation-influence 1;; high tax + low tax average weight
-      set agent-principle 1
-      set agent-shame-decay 1
+      set agent-friend-influence ra-agent-friend-influence / 100
+      set agent-affect-of-advertisement ra-agent-affect-of-advertisement / 100
+      set agent-winning-losing-influence ra-agent-winning-losing-influence / 100  ;; average of friend winning vs losing influence
+      set agent-taxation-influence ra-agent-taxation-influence / 100 ;; high tax + low tax average weight
+      set agent-principle ra-agent-principle / 100
+      set agent-shame-decay ra-agent-shame-decay / 100
       set agent-shame 0
     ]
 
@@ -234,6 +233,26 @@ to set-initial-turtle-vars
   set money salary
   set heard-of-bet False
   set bankrupt False
+
+  if survey-values?
+  [
+      set ra-agent-friend-influence 0.43 * 100
+      set ra-agent-affect-of-advertisement 0.39 * 100
+      set ra-agent-winning-losing-influence (0.63 - 0.46) / 2  * 100;; average of friend winning vs losing influence
+      set ra-agent-taxation-influence (0.61 + 0.54) / 2 * 100 ;; high tax + low tax average weight
+      set ra-agent-principle 0.8 * 100
+      set ra-agent-shame-decay 0.23 * 100
+
+      set p-agent-friend-influence 0.8 * 100
+      set p-agent-affect-of-advertisement 0.7 * 100
+      set p-agent-winning-losing-influence (0.70 - 0.53) / 2  * 100;; average of friend winning vs losing influence
+      set p-agent-taxation-influence (0.83 + 0.44) / 2 * 100;; high tax + low tax average weight
+      set p-agent-principle 0.57 * 100
+      set p-agent-shame-decay 0.34 * 100
+
+  ]
+
+
 end
 
 ;; tell center patch about betting(advertise here)
@@ -302,6 +321,16 @@ to go
   update-smoothing-graph
   update-smoothing-graph-shame
   tick
+
+  if end-at-13k?
+  [
+    if ticks = 62500
+    [
+      user-message (word ticks " has passed. The model has stopped. To turn this off, uncheck end-at-13k?")
+      stop
+    ]
+
+  ]
 end
 
 ;;
@@ -431,6 +460,7 @@ to bet-risk-averse
         set total-profit total-profit + betting-odds * curr-bet
         set success success + 1
         set company-wins (company-wins - betting-odds * curr-bet)
+        decay-shame
       ]
       [ set money money - curr-bet
         set company-wins company-wins + curr-bet
@@ -457,6 +487,7 @@ to bet-risk-averse
          set total-profit total-profit + betting-odds * curr-bet
          set success success + 1
          set company-wins (company-wins - betting-odds * curr-bet)
+         decay-shame
        ]
        [ set money money - curr-bet
          set company-wins company-wins + curr-bet
@@ -492,6 +523,7 @@ to bet-problem
         set total-profit total-profit + betting-odds * curr-bet
         set success success + 1
         set company-wins (company-wins - betting-odds * curr-bet)
+        decay-shame
       ]
       [ set money money - curr-bet
         set company-wins company-wins + curr-bet
@@ -518,6 +550,7 @@ to bet-problem
          set total-profit total-profit + betting-odds * curr-bet
          set success success + 1
          set company-wins (company-wins - betting-odds * curr-bet)
+         decay-shame
        ]
        [ set money money - curr-bet
          set company-wins company-wins + curr-bet
@@ -617,10 +650,10 @@ to update-smoothing-graph-shame
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-698
-22
-1161
-486
+690
+29
+1153
+493
 -1
 -1
 13.8
@@ -1044,22 +1077,22 @@ NIL
 HORIZONTAL
 
 SWITCH
-204
-79
-365
-112
+1196
+418
+1357
+451
 survey-values?
 survey-values?
-0
+1
 1
 -1000
 
 PLOT
-1199
-26
-1679
-336
-Agent Shame Graph
+1166
+30
+1646
+340
+Averages of Agent Shame Graph
 NIL
 NIL
 -10.0
@@ -1072,6 +1105,259 @@ true
 PENS
 "problem shame" 1.0 0 -5298144 true "" "plot mean [agent-shame] of problem-bettors"
 "risk-averse shame" 1.0 0 -11085214 true "" "plot mean [agent-shame] of risk-averse-bettors"
+
+SLIDER
+1173
+519
+1377
+553
+ra-agent-friend-influence
+ra-agent-friend-influence
+0
+100
+79.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1172
+555
+1380
+589
+ra-agent-affect-of-advertisement
+ra-agent-affect-of-advertisement
+0
+100
+69.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1170
+589
+1382
+623
+ra-agent-winning-losing-influence
+ra-agent-winning-losing-influence
+0
+100
+8.5
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1173
+625
+1385
+659
+ra-agent-taxation-influence
+ra-agent-taxation-influence
+0
+100
+65.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1172
+660
+1384
+694
+ra-agent-principle
+ra-agent-principle
+0
+100
+3.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1173
+697
+1381
+731
+ra-agent-shame-decay
+ra-agent-shame-decay
+0
+100
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1424
+520
+1610
+554
+p-agent-friend-influence
+p-agent-friend-influence
+0
+100
+80.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1424
+556
+1657
+590
+p-agent-affect-of-advertisement
+p-agent-affect-of-advertisement
+0
+100
+70.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1424
+590
+1654
+624
+p-agent-winning-losing-influence
+p-agent-winning-losing-influence
+0
+100
+8.4999
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1424
+628
+1623
+662
+p-agent-taxation-influence
+p-agent-taxation-influence
+0
+100
+63.5
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1424
+664
+1597
+698
+p-agent-principle
+p-agent-principle
+0
+100
+56.99
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1425
+699
+1598
+733
+p-agent-shame-decay
+p-agent-shame-decay
+0
+100
+34.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+1428
+460
+1595
+512
+Problem Bettor Values:
+20
+0.0
+1
+
+TEXTBOX
+1177
+458
+1344
+510
+Risk-Averse Bettor Values:
+20
+0.0
+1
+
+MONITOR
+1197
+363
+1347
+409
+Risk-Averse Avg. Shame
+mean [agent-shame] of risk-averse-bettors
+17
+1
+11
+
+MONITOR
+1422
+365
+1589
+411
+Problem-Bettor Avg. Shame
+mean [agent-shame] of problem-bettors
+17
+1
+11
+
+SWITCH
+903
+586
+1023
+620
+end-at-13k?
+end-at-13k?
+0
+1
+-1000
+
+TEXTBOX
+904
+543
+1071
+579
+End at 13k Ticks for Equal Model Runs
+14
+0.0
+1
+
+TEXTBOX
+1186
+742
+1645
+796
+Need to turn off survey-values above for these changes to be implemented.
+14
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
