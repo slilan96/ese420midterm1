@@ -6,7 +6,7 @@
 ############################################################################
 
 library("RNetLogo")
-nl.path <- "C:/Users/abcam/"
+nl.path <- "C:/Users/Abdurrahman/Desktop/UPenn20182019Senior/ESE420/ese420midterm1/"
 NLStart("C:/Program Files/NetLogo 6.0.4/app", gui = FALSE, nl.jarname = "netlogo-6.0.4.jar")
 
 
@@ -118,7 +118,7 @@ NLCommand("go")
 # to view the output
 timedata
 # to save this output to CSV (and then work on it in Excel)
-for (i in 1:10){write.csv(timedata[i], file="C:/Users/abcam/log.csv")}
+for (i in 1:10){write.csv(timedata[i], file="C:/Users/Abdurrahman/Desktop/UPenn20182019Senior/ESE420/ese420midterm1/log.csv")}
 
 #This  should save it as a file with commas separating the column entries. 
 #If you are denied access, then copy the output to the clipboard and save it as a txt file. Then import it to xsl.
@@ -133,6 +133,14 @@ for (i in 1:10){write.csv(timedata[i], file="C:/Users/abcam/log.csv")}
 #model.path2 <- "GasLab Free Gas.nlogo"
 #NLLoadModel(file.path(nl.path, model.path1, model.path2))
 
+
+nl.path <- "C:/Users/Abdurrahman/Desktop/UPenn20182019Senior/ESE420/ese420midterm1/"
+NLStart("C:/Program Files/NetLogo 6.0.4/app", gui = FALSE, nl.jarname = "netlogo-6.0.4.jar")
+###########################################################################
+#Commands
+###########################################################################
+model.path <- "midtermOne.nlogo"
+absolute.model.path <- paste(nl.path,model.path,sep="")
 NLLoadModel(absolute.model.path)
 
 NLCommand("set average-salary 500", "no-display", "setup")
@@ -143,7 +151,7 @@ NLCommand("set average-salary 500", "no-display", "setup")
 #one big vector:
 
 agent.money <- NLDoReport(40, "repeat 50 [go]",
- "[money] of particles")
+ "[money] of turtles")
 
 agent.money.vector <- unlist(agent.money)
 
@@ -153,7 +161,7 @@ yacasInstall()
 shame.mean <- NLReport("mean [agent-shame] of turtles")
 
 B <- function(v, m = 1, k = 1)
-  v * m * k
+  (v * m * k)
 yacas(B)
 #Then, we define the integral of function B from 0 to infity and register the integral expression
 #in Yacas:
@@ -164,19 +172,19 @@ yacas(B.integr)
 normalizer.yacas <- yacas(N(B.integr))
 normalizer <- Eval(normalizer.yacas)
 print(normalizer$value)
-maxspeed <- max(particles.speed.vector)
+maxspeed <- max(agent.money.vector)
 
 #Next, we create a sequence vector from 0 to maxspeed, by stepsize, and calculate the
 #theoretical values at the points of the sequence vector:
 
 stepsize <- 0.25
-v.vec <- seq(0, maxspeed, stepsize)
+v.vec <- seq(0, 10, stepsize)
 theoretical <- B(v.vec) / normalizer$value
 
 #At the end, we plot the empirical/simulation distribution together with the theoretical distribution
 #of particle speeds
 
-hist(particles.speed.vector, breaks = max(particles.speed.vector) * 5,
+hist(agent.money.vector, breaks = max(agent.money.vector) * 5,
   freq = FALSE, xlim = c(0, as.integer(maxspeed) + 5),
   ylab = "density", xlab = "speed of particles", main = "")
 lines(v.vec, theoretical, lwd = 2, col = "blue")
