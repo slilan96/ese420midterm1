@@ -6,7 +6,7 @@ nl.path <- "C:/Users/Abdurrahman/Desktop/UPenn20182019Senior/ESE420/ese420midter
 # This path should point to your netlogo installed folder
 NLStart("C:/Program Files/NetLogo 6.0.4/app", gui = FALSE, nl.jarname = "netlogo-6.0.4.jar")
 # name of the NetLogo model
-model.path <- "midtermOne.nlogo"
+model.path <- "modelForR.nlogo"
 # the full string for the Netlogo model
 absolute.model.path <- paste(nl.path,model.path,sep="")
 
@@ -114,8 +114,10 @@ plot(c(1:3),data$Sentiment, main="Total Sentiment at H6=0.52793, and H14=0.02488
 
 response_data <- list()
 H6_sample <- rexp(1, H6_rate)
+NLLoadModel(absolute.model.path)
 
 for(i in 1:20){
+  
   # Varying H14
   H14_sample <- rlnorm(1, H14_mean, H14_sd)
   
@@ -140,8 +142,10 @@ write.csv(response_data, file=sprintf("%sPart2E_H6Const_VaryH14_h6=%2.5f.csv", n
 
 response_data <- list()
 H14_sample <- rlnorm(1, H14_mean, H14_sd)
+NLLoadModel(absolute.model.path)
 
 for(i in 1:20){
+  
   # Varying H6
   H6_sample <- rexp(1, H6_rate)
   
@@ -159,6 +163,10 @@ for(i in 1:20){
 }
 
 write.csv(response_data, file=sprintf("%sPart2E_H14Const_VaryH6_h14=%2.5f.csv", nl.path, H14_sample))  
+
+## Cross Run Graphs of H14 vs Constant H6, and H6 vs Constant H14
+
+
 
 
 # Part 3 & 4: Design a parametric sensitivity analysis, Explore 5 factors in a 2^k 
