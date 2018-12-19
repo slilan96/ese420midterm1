@@ -34,36 +34,8 @@ H14_sd <- H14fit$estimate[2]
 
 # Part 2:
 
-##
-# (a) Use R package that lets you pick a random number from a distribution for each pdf
-#     For combinatorial samples, sample from each pdf at random (without keeping one
-#     constant) and run the model.
-##
-
-# H6: Influence of a Close One Losing a Bet
-# H14: The Decay of Affects of Violation of Principles
-
 # loading the model into R
 NLLoadModel(absolute.model.path)
-
-# rexp(n times to sample, lambda rate of arrival)
-H6_sample <- rexp(1, H6_rate)
-H14_sample <- rlnorm(1, H14_mean, H14_sd)
-
-# ##TODO Think about whether we should be separetely coming up with values
-# For each cluster...
-
-# Running model combinatorially with these samples
-NLCommand(sprintf("ask turtles [ set agent-winning-losing-influence %s]", H6_sample))
-NLCommand(sprintf("ask turtles [ set agent-shame-decay %s]", H14_sample))
-NLCommand("setup")
-NLDoCommandWhile("number-of-bets-made < 100", "go")
-ret <- NLReport("sum [agent-shame] of turtles")
-ret
-
-#timedata[[i]] <- NLGetAgentSet(c("who", "xcor", "ycor", "agent-shame","bankrupt"), "turtles")}
-#timedata
-#for (i in 1:10){write.csv(timedata[i], file="C:/Users/Abdurrahman/Desktop/UPenn20182019Senior/ESE420/ese420midterm1/log.csv")}
 
 ##
 # (b) Sample from each PDF and plot to show that we are sampling correctly.
@@ -82,61 +54,111 @@ plot(density(H6_sampling))
 # the log normal distribution plot of H14
 plot(density(H14_sampling))
 
+##
+# (a) Use R package that lets you pick a random number from a distribution for each pdf
+#     For combinatorial samples, sample from each pdf at random (without keeping one
+#     constant) and run the model.
+##
+
+# H6: Influence of a Close One Losing a Bet
+# H14: The Decay of Affects of Violation of Principles
+
+# Running model combinatorially with these samples
+response_data <- list()
+# rexp(n times to sample, lambda rate of arrival)
+H6_sample <- rexp(1, H6_rate)
+# rlnorm(n times to sample, mean, sd)
+H14_sample <- rlnorm(1, H14_mean, H14_sd)
+
+for(i in 1:3){
+  NLCommand("setup")
+  # Setting H6 and H14 Values
+  NLCommand(sprintf("ask turtles [ set agent-winning-losing-influence %s]", H6_sample))
+  NLCommand(sprintf("ask turtles [ set agent-shame-decay %s]", H14_sample))
+  NLDoCommandWhile("ticks < 15000", "go")
+  list_to_report <- c(i, "ticks", "sum [agent-shame] of turtles", "sum [bankrupt] of turtles",
+                      "sum [money] of turtles", "sum [sentiment] of turtles")
+  list_col_names <- c("Replication Number of Total Responses", "Ticks","Shame", "Bankrupt",
+                      "Money", "Sentiment")
+  response_data[[i]] <- NLDoReport(1, "go", list_to_report, as.data.frame=TRUE, 
+                                   df.col.names=list_col_names)
+}
+
+# (d) Write out the outputs to a saved csv file.
+write.csv(response_data, file=sprintf("%sh6=%2.5f_h14=%2.5f.csv", nl.path, H6_sample, H14_sample))  
 
 ##
 # (c) Sample the results of the model multiple times at the same numbers to show that
 #     we have stochastic outcomes
 ##
 
-sim <- function(numofpeople) {
-  NLLoadModel(absolute.model.path)
-  NLCommand("setup")
-  
-  NLCommand("set num-people", numofpeople)
-  NLDoCommandWhile("number-of-bets-made < 100", "go")
-  
-  #NLCommand("set num-people", numofpeople, "setup")
-  ret <- NLReport("company-wins")
-  return(ret)
-}
+# At H6=0.52793, and H14=0.02488
+data = read.csv(paste(nl.path, "Part2CValuesInRows.csv", sep=""), header=TRUE)
 
-rep.sim <- function(numpeople, rep)
-  lapply(numpeople, function(dens) replicate(rep, sim(dens)))
-d.2 <- seq(45, 70, 5)
-res <- rep.sim(d.2, 10)
-boxplot(res, names = d.2, xlab = "num of people", ylab = "company winnings")
-
-##
-# (d) Write out the outputs to a saved csv file.
-##
-
-#NLLoadModel(file.path(nl.path, model.path))
-NLLoadModel(absolute.model.path)
-
-nruns <- 30
-rm(list=ls())
-timedata <- list()
-for(i in 1:10) {
-  NLCommand("setup")
-  NLDoCommand(10,"go")
-  timedata[[i]] <- NLGetAgentSet(c("who", "xcor", "ycor", "agent-shame","bankrupt"), "turtles")}
-NLCommand("setup")
-NLCommand("go")
-
-# to view the output
-timedata
-# to save this output to CSV (and then work on it in Excel)
-for (i in 1:10){write.csv(timedata[i], file="C:/Users/Abdurrahman/Desktop/UPenn20182019Senior/ESE420/ese420midterm1/log.csv")}
+plot(c(1:3),data$Shame, main="Total Shame at H6=0.52793, and H14=0.02488",
+     xlab="Replications", ylab="Shame Value", col="red", pch=19)
+plot(c(1:3),data$Bankrupt, main="Total Bankrupt at H6=0.52793, and H14=0.02488",
+     xlab="Replications", ylab="Bankrupt Value", col="red", pch=19)
+plot(c(1:3),data$Money, main="Total Money at H6=0.52793, and H14=0.02488",
+     xlab="Replications", ylab="Money Value", col="red", pch=19)
+plot(c(1:3),data$Sentiment, main="Total Sentiment at H6=0.52793, and H14=0.02488",
+     xlab="Replications", ylab="Sentiment Value", col="red", pch=19)
 
 ##
 # (e) Display a cross run output graph 
-#     (Possible Responses and Parameters for our model)
-#     Responses: money, sentiment, success, heard-of-bet, salary, bankrupt, agent-shame
-#     Parameters: salary, agent-friend-influence, agent-affect-of-advertisement, 
-#                 times-bet-advertised (patches own), agent-principle, 
-#                 agent-taxation-influence, agent-shame-decay
-#                                 
 ##
+
+##
+## Keep H6 Constant and Vary H14 for 20 Runs
+##
+
+response_data <- list()
+H6_sample <- rexp(1, H6_rate)
+
+for(i in 1:20){
+  # Varying H14
+  H14_sample <- rlnorm(1, H14_mean, H14_sd)
+  
+  NLCommand("setup")
+  # Setting H6 and H14 Values
+  NLCommand(sprintf("ask turtles [ set agent-winning-losing-influence %s]", H6_sample))
+  NLCommand(sprintf("ask turtles [ set agent-shame-decay %s]", H14_sample))
+  NLDoCommandWhile("ticks < 15000", "go")
+  list_to_report <- c(H14_sample, i, "ticks", "sum [agent-shame] of turtles", "sum [bankrupt] of turtles",
+                      "sum [money] of turtles", "sum [sentiment] of turtles")
+  list_col_names <- c("H14_sample","Replication Number of Total Responses", "Ticks","Shame", "Bankrupt",
+                      "Money", "Sentiment")
+  response_data[[i]] <- NLDoReport(1, "go", list_to_report, as.data.frame=TRUE, 
+                                   df.col.names=list_col_names)
+}
+
+write.csv(response_data, file=sprintf("%sPart2E_H6Const_VaryH14_h6=%2.5f.csv", nl.path, H6_sample))  
+
+##
+## Keep H14 Constant and Vary H6 for 20 Runs
+##
+
+response_data <- list()
+H14_sample <- rlnorm(1, H14_mean, H14_sd)
+
+for(i in 1:20){
+  # Varying H6
+  H6_sample <- rexp(1, H6_rate)
+  
+  NLCommand("setup")
+  # Setting H6 and H14 Values
+  NLCommand(sprintf("ask turtles [ set agent-winning-losing-influence %s]", H6_sample))
+  NLCommand(sprintf("ask turtles [ set agent-shame-decay %s]", H14_sample))
+  NLDoCommandWhile("ticks < 15000", "go")
+  list_to_report <- c(H6_sample, i, "ticks", "sum [agent-shame] of turtles", "sum [bankrupt] of turtles",
+                      "sum [money] of turtles", "sum [sentiment] of turtles")
+  list_col_names <- c("H6_sample","Replication Number of Total Responses", "Ticks","Shame", "Bankrupt",
+                      "Money", "Sentiment")
+  response_data[[i]] <- NLDoReport(1, "go", list_to_report, as.data.frame=TRUE, 
+                                   df.col.names=list_col_names)
+}
+
+write.csv(response_data, file=sprintf("%sPart2E_H14Const_VaryH6_h14=%2.5f.csv", nl.path, H14_sample))  
 
 
 # Part 3 & 4: Design a parametric sensitivity analysis, Explore 5 factors in a 2^k 

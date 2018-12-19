@@ -1,3 +1,12 @@
+# Parameters to consider in our model...
+#     (Possible Responses and Parameters for our model)
+#     Responses: money, sentiment, success, heard-of-bet, salary, bankrupt, agent-shame
+#     Parameters: salary, agent-friend-influence, agent-affect-of-advertisement, 
+#                 times-bet-advertised (patches own), agent-principle, 
+#                 agent-taxation-influence, agent-shame-decay
+
+
+
 ############################################################################
 #R Marries NetLogo: Introduction to the RNetLogo Package by
 # Jan C. Thiele
@@ -99,6 +108,8 @@ mean(pb.4)
 ###########################################################################
 #Monte Carlo Simulation
 ###########################################################################
+
+
 
 #model.path <- file.path("models", "Sample Models", "Biology", "Virus.nlogo")
 

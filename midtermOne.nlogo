@@ -1110,7 +1110,7 @@ SLIDER
 1173
 519
 1377
-553
+552
 ra-agent-friend-influence
 ra-agent-friend-influence
 0
@@ -1125,7 +1125,7 @@ SLIDER
 1172
 555
 1380
-589
+588
 ra-agent-affect-of-advertisement
 ra-agent-affect-of-advertisement
 0
@@ -1140,7 +1140,7 @@ SLIDER
 1170
 589
 1382
-623
+622
 ra-agent-winning-losing-influence
 ra-agent-winning-losing-influence
 0
@@ -1155,7 +1155,7 @@ SLIDER
 1173
 625
 1385
-659
+658
 ra-agent-taxation-influence
 ra-agent-taxation-influence
 0
@@ -1170,7 +1170,7 @@ SLIDER
 1172
 660
 1384
-694
+693
 ra-agent-principle
 ra-agent-principle
 0
@@ -1185,7 +1185,7 @@ SLIDER
 1173
 697
 1381
-731
+730
 ra-agent-shame-decay
 ra-agent-shame-decay
 0
@@ -1200,7 +1200,7 @@ SLIDER
 1424
 520
 1610
-554
+553
 p-agent-friend-influence
 p-agent-friend-influence
 0
@@ -1215,7 +1215,7 @@ SLIDER
 1424
 556
 1657
-590
+589
 p-agent-affect-of-advertisement
 p-agent-affect-of-advertisement
 0
@@ -1230,7 +1230,7 @@ SLIDER
 1424
 590
 1654
-624
+623
 p-agent-winning-losing-influence
 p-agent-winning-losing-influence
 0
@@ -1245,7 +1245,7 @@ SLIDER
 1424
 628
 1623
-662
+661
 p-agent-taxation-influence
 p-agent-taxation-influence
 0
@@ -1260,7 +1260,7 @@ SLIDER
 1424
 664
 1597
-698
+697
 p-agent-principle
 p-agent-principle
 0
@@ -1275,7 +1275,7 @@ SLIDER
 1425
 699
 1598
-733
+732
 p-agent-shame-decay
 p-agent-shame-decay
 0
@@ -1310,7 +1310,7 @@ MONITOR
 1197
 363
 1347
-409
+408
 Risk-Averse Avg. Shame
 mean [agent-shame] of risk-averse-bettors
 17
@@ -1321,7 +1321,7 @@ MONITOR
 1422
 365
 1589
-411
+410
 Problem-Bettor Avg. Shame
 mean [agent-shame] of problem-bettors
 17
@@ -1332,10 +1332,10 @@ SWITCH
 903
 586
 1023
-620
+619
 end-at-13k?
 end-at-13k?
-0
+1
 1
 -1000
 
