@@ -1,3 +1,7 @@
 dummy.nlogo
 .env
 .midtermOne.tmp.nlogo
+
+
+# no jmp files
+*.jmp
