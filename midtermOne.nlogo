@@ -7,6 +7,8 @@
 ;;
 ;; TURTLE VARIABLES
 ;;
+extensions [r]
+
 
 turtles-own[
   money ;; money that turtle has at one point
@@ -25,8 +27,6 @@ turtles-own[
   agent-principle
   agent-shame-decay
   agent-shame
-
-
 ]
 
 breed [non-bettors non-bettor-one]
@@ -495,9 +495,6 @@ to bet-risk-averse
          set success success - 1
        ]
      ]
-
-
-
     ]
 
 
