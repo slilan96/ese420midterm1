@@ -1,0 +1,175 @@
+﻿New Table( "Evidence Table - Midterm 2 _Sheet1",
+	Add Rows( 15 ),
+	New Column( "H1: Started gambling because of friends/relatives",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values( [0, 1, 0.6, 0.6, 0.6, 1, 0, 0, 1, 0, 0.8, 0, 0.8, 0.6, 1] )
+	),
+	New Column( "H2: Influence of Advertisements on Betting",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[0.1, 0.1, 0.5, 0.5, 0.1, 0.4, 0.4, 0.2, 0.5, 0.1, 0.4, 1, 0.7, 0.7, 0.7
+			]
+		)
+	),
+	New Column( "H3: Perspective on Gambling being normal",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[0.375, 0.125, 0.375, 0.375, 0.125, 0.125, 0.375, 0.125, 0.375, 0.375,
+			0.375, 0.625, 0.875, 0.625, 0.125]
+		)
+	),
+	New Column( "H4: Liking for Risk",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values( [1, 1, 0, 0, 0, -1, 0, 0, -1, 0, -1, -1, -1, 1, -1] )
+	),
+	New Column( "H5: Influence of a close one winning a bet.",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[0.3, 0.2, 0.8, 0.8, 0.1, 1, 0.7, 0.3, 0.6, 0.3, 1, 1, 0.8, 0.9, 0.4]
+		)
+	),
+	New Column( "H6: Influence of a close one losing a bet.",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Selected,
+		Set Values(
+			[0.3, 0.9, 0.1, 0.1, 1, 0.2, 0.4, 0.3, 0.4, 0.6, 0.4, 0.4, 0.3, 0.4, 0.9
+			]
+		)
+	),
+	New Column( "H7: Bettors bet most weeks a year",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[0, 0, 0.0961538461538462, 0.0961538461538462, 0.0384615384615385,
+			0.0576923076923077, 0.0961538461538462, 0.384615384615385,
+			0.769230769230769, 0.192307692307692, 0.769230769230769,
+			0.192307692307692, 0.769230769230769, 0.461538461538462,
+			0.711538461538462]
+		)
+	),
+	New Column( "H10: Problem Gamber",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values( [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1] )
+	),
+	New Column( "H11: Low Taxation Influence on Gambling",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[0.333333333333333, 0.111111111111111, 0.111111111111111,
+			0.111111111111111, 0.111111111111111, 0.555555555555556,
+			0.111111111111111, 1, 0.888888888888889, 0.333333333333333,
+			0.777777777777778, 0.555555555555556, 0.333333333333333,
+			0.444444444444444, 0.555555555555556]
+		)
+	),
+	New Column( "H12: High Taxation Influence on Gambling",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[1, 0.5, 0.1, 0.1, 0.1, 0.9, 0.1, 1, 1, 0.9, 0.4, 0.5, 0.7, 0.8, 1]
+		)
+	),
+	New Column( "H13: Principles adhered to when gambling",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[0.1, 0.1, 0.1, 0.1, 1, 1, 0.5, 0.8, 1, 0.9, 0.2, 1, 0.2, 0.5, 1]
+		)
+	),
+	New Column( "H14: The decay of the affects of violation of principles",
+		Numeric,
+		"Continuous",
+		Format( "Best", 12 ),
+		Set Values(
+			[0.12, 0.7, 0.04, 0.04, 0.12, 0.7, 0.7, 0.12, 0.12, 1, 0.04, 0.7, 0.04,
+			0.28, 0.7]
+		)
+	),
+	Set Row States( [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 2, 0, 0, 0, 0] )
+) << Run Formulas;
+Distribution(
+	Continuous Distribution(
+		Column( :Name( "H1: Started gambling because of friends/relatives" ) )
+	),
+	Continuous Distribution(
+		Column( :Name( "H2: Influence of Advertisements on Betting" ) ),
+		Quantile Box Plot( 1 ),
+		Normal Quantile Plot( 1 )
+	),
+	Continuous Distribution(
+		Column( :Name( "H3: Perspective on Gambling being normal" ) ),
+		Normal Quantile Plot( 1 )
+	),
+	Continuous Distribution( Column( :Name( "H4: Liking for Risk" ) ) ),
+	Continuous Distribution(
+		Column( :Name( "H5: Influence of a close one winning a bet." ) )
+	),
+	Continuous Distribution(
+		Column( :Name( "H6: Influence of a close one losing a bet." ) ),
+		Normal Quantile Plot( 1 ),
+		Fit Distribution( Normal( Goodness of Fit( 1 ) ) ),
+		Fit Distribution( LogNormal( Goodness of Fit( 1 ) ) ),
+		Fit Distribution( Smooth Curve ),
+		Fit Distribution( Exponential( Goodness of Fit( 1 ) ) )
+	),
+	Continuous Distribution(
+		Column( :Name( "H7: Bettors bet most weeks a year" ) )
+	),
+	Continuous Distribution(
+		Column( :Name( "H11: Low Taxation Influence on Gambling" ) ),
+		Fit Distribution( LogNormal( Goodness of Fit( 1 ) ) ),
+		Fit Distribution( Exponential( Goodness of Fit( 1 ) ) )
+	),
+	Continuous Distribution(
+		Column( :Name( "H12: High Taxation Influence on Gambling" ) )
+	),
+	Continuous Distribution(
+		Column( :Name( "H13: Principles adhered to when gambling" ) )
+	),
+	Continuous Distribution(
+		Column(
+			:Name( "H14: The decay of the affects of violation of principles" )
+		),
+		Fit Distribution( Normal( Goodness of Fit( 1 ) ) ),
+		Fit Distribution( Exponential( Goodness of Fit( 1 ) ) ),
+		Fit Distribution( LogNormal( Goodness of Fit( 1 ) ) )
+	),
+	SendToReport(
+		Dispatch(
+			{"H2: Influence of Advertisements on Betting"},
+			"",
+			Picture Box( 5 ),
+			{Set Summary Behavior( "Collapse" )}
+		),
+		Dispatch(
+			{"H3: Perspective on Gambling being normal"},
+			"",
+			Picture Box( 5 ),
+			{Set Summary Behavior( "Collapse" )}
+		),
+		Dispatch(
+			{"H6: Influence of a close one losing a bet."},
+			"",
+			Picture Box( 5 ),
+			{Set Summary Behavior( "Collapse" )}
+		)
+	)
+);
