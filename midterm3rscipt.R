@@ -1,4 +1,5 @@
 # Shadrack Lilan and Abdurrahman Cam Midterm 3 - ESE 420 - R script
+# Version 12/19/2018 10:20pm
 
 library("RNetLogo")
 # Change this path to where the NetLogo Model and R script are
