@@ -249,11 +249,8 @@ boxplot(Money~taxation, data=data, main="Money vs Taxation",
 boxplot(Company.Wins~taxation, data=data, main="Company Wins vs Taxation",
         xlab="Taxation", ylab="Company Wins", col="orange", border="brown")
 
-boxplot(Successful.Bets~taxation, data=data, main="Successful Bets vs Taxation",
-        xlab="Taxation", ylab="Successful Bets", col="orange", border="brown")
-
-boxplot(Successful.Bets.Made~taxation, data=data, main="Successful Bets Made vs Taxation",
-        xlab="Taxation", ylab="Successful Bets Made", col="orange", border="brown")
+boxplot(Successful.Bets.Made~taxation, data=data, main="Bets Made vs Taxation",
+        xlab="Taxation", ylab="Bets Made", col="orange", border="brown")
 
 
 #  Analyze the results across 3 replications (compute mean and variance)
@@ -279,11 +276,6 @@ mean_company_wins <- mean(data$Company.Wins)
 variance_company_wins <- var(data$Company.Wins)
 print(mean_company_wins)
 print(variance_company_wins)
-
-mean_successful_bets <- mean(data$Successful.Bets)
-variance_successful_bets <- var(data$Successful.Bets)
-print(mean_successful_bets)
-print(variance_successful_bets)
 
 mean_successful_bets_made <- mean(data$Successful.Bets.Made)
 variance_successful_bets_made <- var(data$Successful.Bets.Made)
