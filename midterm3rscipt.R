@@ -47,6 +47,7 @@ n <- 100
 
 # rexp(n times to sample, lambda rate of arrival)
 H6_sampling <- rexp(n, H6_rate)
+# rlnorm(n times to sample, mean, sd)
 H14_sampling <- rlnorm(n, H14_mean, H14_sd)
 
 # the exponential distribution plot of H6
@@ -194,12 +195,100 @@ plot(x_line,data$Sentiment, main="Total Sentiment at H6=0.52793 and varying H14"
 # Part 3 & 4: Design a parametric sensitivity analysis, Explore 5 factors in a 2^k 
 #             factorial design to find the main effects of your model.
 
+
+
 # Part 5: Output Analysis
 # - Run the parametric sensitivity analysis above that explores the 5 factors (3 replications)
 # - Analyze one of the most significant factors by running a What if scenario...
 #   (different from PDFs in 1 and 2)
 
 
+# The What if Scenario
+# Taxation, Normal Dist., Mean: 90, Std. Dev: 5, No. Samples: 10
+
+
+response_data <- list()
+NLLoadModel(absolute.model.path)
+tax_sample <- rnorm(10, mean=90, sd=5)
+
+for(i in 1:10){
+  
+  NLCommand("setup")
+  # Setting H6 and H14 Values
+  NLCommand(sprintf("set tax-deterrent-perc %s", tax_sample[i]))
+  NLDoCommandWhile("ticks < 5000", "go")
+  list_to_report <- c(tax_sample[i], i, "ticks", "sum [agent-shame] of turtles", "sum [bankrupt] of turtles",
+                      "sum [money] of turtles", "sum [sentiment] of turtles", "company-wins", "sum [success] of turtles",
+                      "number-of-bets-made", "sum [heard-of-bet] of turtles")
+  list_col_names <- c("taxation","Replication Number of Total Responses", "Ticks","Shame", "Bankrupt",
+                      "Money", "Sentiment", "Company Wins", "Successful Bets", "Successful Bets Made", 
+                      "Number Heard of Bet")
+  response_data[[i]] <- NLDoReport(1, "go", list_to_report, as.data.frame=TRUE, 
+                                   df.col.names=list_col_names)
+}
+
+write.csv(response_data, file=sprintf("%s5K_Ticks_Part6_TaxationWhatIf_Replication=3.csv", nl.path))  
+
+
+# Plotting the Outputs in Boxplot form
+##################################
+data = read.csv(paste(nl.path, "Part6_WhatIf_RowsTogether.csv", sep=""), header=TRUE)
+
+# round the values
+data$taxation <- round(data$taxation, digits=0)
+
+boxplot(Sentiment~taxation, data=data, main="Sentiment vs Taxation",
+        xlab="Taxation", ylab="Sentiment", col="orange", border="brown")
+
+boxplot(Shame~taxation, data=data, main="Shame vs Taxation",
+        xlab="Taxation", ylab="Shame", col="orange", border="brown")
+
+boxplot(Money~taxation, data=data, main="Money vs Taxation",
+        xlab="Taxation", ylab="Money", col="orange", border="brown")
+
+boxplot(Company.Wins~taxation, data=data, main="Company Wins vs Taxation",
+        xlab="Taxation", ylab="Company Wins", col="orange", border="brown")
+
+boxplot(Successful.Bets~taxation, data=data, main="Successful Bets vs Taxation",
+        xlab="Taxation", ylab="Successful Bets", col="orange", border="brown")
+
+boxplot(Successful.Bets.Made~taxation, data=data, main="Successful Bets Made vs Taxation",
+        xlab="Taxation", ylab="Successful Bets Made", col="orange", border="brown")
+
+
+#  Analyze the results across 3 replications (compute mean and variance)
+#  plot the outcomes, and write up your actual outcomes. 
+#  Is the response graph still linear? What did you learn?
+
+mean_sentiment <- mean(data$Sentiment)
+variance_sentiment <- var(data$Sentiment)
+print(mean_sentiment)
+print(variance_sentiment)
+
+mean_shame <- mean(data$Shame)
+variance_shame <- var(data$Shame)
+print(mean_shame)
+print(variance_shame)
+
+mean_money <- mean(data$Money)
+variance_money <- var(data$Money)
+print(mean_money)
+print(variance_money)
+
+mean_company_wins <- mean(data$Company.Wins)
+variance_company_wins <- var(data$Company.Wins)
+print(mean_company_wins)
+print(variance_company_wins)
+
+mean_successful_bets <- mean(data$Successful.Bets)
+variance_successful_bets <- var(data$Successful.Bets)
+print(mean_successful_bets)
+print(variance_successful_bets)
+
+mean_successful_bets_made <- mean(data$Successful.Bets.Made)
+variance_successful_bets_made <- var(data$Successful.Bets.Made)
+print(mean_successful_bets_made)
+print(variance_successful_bets_made)
 
 
 
